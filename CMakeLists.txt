@@ -18,5 +18,6 @@ include_directories(.)
 add_executable(test ${TEST_FILES} ${CONCURRENT_TREE_FILES})
 
 if(WITH_TSAN AND NOT MSVC)
+    MESSAGE(STATUS "Compiling with thread sanitizer")
     string(APPEND CMAKE_CXX_FLAGS " -fsanitize=thread")
 endif()

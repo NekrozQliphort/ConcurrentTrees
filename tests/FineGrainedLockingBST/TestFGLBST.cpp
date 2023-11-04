@@ -1,20 +1,24 @@
 #include <thread>
 #include <vector>
+#include <functional>
+#include <iostream>
 
 #include "catch.hpp"
-#include "src/NatarajanBST/NatarajanBST.h"
+#include "src/FineGrainedLockingBST/FGLBST.h"
 
-TEST_CASE("Natarajan Insertion sequential check") {
-  NatarajanBST<int> tree;
-  for (int i = 0; i < 100; i++) REQUIRE(!tree[i]);
-  for (int i = 0; i < 100; i++) REQUIRE(tree.insert(i));
-  for (int i = 0; i < 100; i++) REQUIRE(tree[i]);
+TEST_CASE("FGL Insertion sequential check") {
+  constexpr int NUM = 1000;
+  FGLBST<int> tree;
+
+  for (int i = 0; i < NUM; i++) REQUIRE(!tree[i]);
+  for (int i = 0; i < NUM; i++) REQUIRE(tree.insert(i));
+  for (int i = 0; i < NUM; i++) REQUIRE(tree[i]);
 }
 
-TEST_CASE("Natarajan Deletion sequential check") {
+TEST_CASE("FGL Deletion sequential check") {
   SECTION("0/1 child deletion") {
     constexpr int NUM = 1000;
-    NatarajanBST<int> tree;
+    FGLBST<int> tree;
 
     for (int i = 0; i < NUM; i++) REQUIRE(tree.insert(i));
     for (int i = 0; i < NUM; i++) {
@@ -26,7 +30,7 @@ TEST_CASE("Natarajan Deletion sequential check") {
 
   SECTION("2 children deletion") {
     constexpr int NUM = 1000;
-    NatarajanBST<int> tree;
+    FGLBST<int> tree;
 
     const std::function<void(int,int)> balancedInsertFunc = [&tree,&balancedInsertFunc](int start, int end) {
       if (start > end) return;
@@ -47,11 +51,11 @@ TEST_CASE("Natarajan Deletion sequential check") {
   }
 }
 
-TEST_CASE("Insertion - Insertion Race") {
+TEST_CASE("FGL Insertion - Insertion Race") {
   constexpr int NUM_ITER = 10, NUM_THREADS = 10, NUM_ELEMS_PER_THREAD = 1000;
 
   for (int i = 0; i < NUM_ITER; i++) {
-    NatarajanBST<int> tree;
+    FGLBST<int> tree;
 
     const auto insertFunc = [&tree](int start, int end) {
       for (int k = start; k < end; k++)
@@ -72,22 +76,25 @@ TEST_CASE("Insertion - Insertion Race") {
   }
 }
 
-TEST_CASE("Natarajan Deletion - Deletion Race") {
+TEST_CASE("FGL Deletion - Deletion Race") {
   constexpr int NUM_ITER = 10, NUM_THREADS = 50, NUM_ELEMS_PER_THREAD = 400, MOD = 64;
 
   for (int i = 0; i < NUM_ITER; i++) {
-    NatarajanBST<int> tree;
+    FGLBST<int> tree;
     // Balanced tree insertion
-    const std::function<void(int, int)> balancedInsertFunc = [&tree, &balancedInsertFunc](int start, int end) {
+    const std::function<void(int,int)> balancedInsertFunc = [&tree,&balancedInsertFunc](int start, int end) {
       if (start > end) return;
       int mid = start + (end - start) / 2;
-      tree.insert(mid);
+      REQUIRE(tree.insert(mid));
 
-      balancedInsertFunc(start, mid - 1);
-      balancedInsertFunc(mid + 1, end);
+      balancedInsertFunc(start, mid-1);
+      balancedInsertFunc(mid+1, end);
     };
 
-    balancedInsertFunc(0, MOD * NUM_ELEMS_PER_THREAD - 1);
+    balancedInsertFunc(0, MOD * NUM_ELEMS_PER_THREAD-1);
+    for (int num = 0; num < MOD * NUM_ELEMS_PER_THREAD; num++) {
+      REQUIRE(tree[num]);
+    }
 
     const auto deleteFunc = [&tree](int start) {
       for (int k = 0; k < NUM_ELEMS_PER_THREAD; k++) {
@@ -104,10 +111,11 @@ TEST_CASE("Natarajan Deletion - Deletion Race") {
 
     for (int thread = 0; thread < NUM_THREADS; thread++) threads[thread].join();
 
-    for (int num = 0; num < NUM_THREADS * NUM_ELEMS_PER_THREAD; num++) {
+    for (int num = 0; num < MOD * NUM_ELEMS_PER_THREAD; num++) {
       if (num % MOD < NUM_THREADS) REQUIRE(!tree[num]);
-      else
-        REQUIRE(tree[num]);
+      else REQUIRE(tree[num]);
     }
+
+
   }
 }

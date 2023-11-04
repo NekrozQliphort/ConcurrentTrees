@@ -3,5 +3,5 @@
 
 template <class T>
 struct SeekRecord {
-  Node<T>*ancestor, *successor, *parent, *leaf;
+  Node<T> *ancestor, *successor, *parent, *leaf;
 };
