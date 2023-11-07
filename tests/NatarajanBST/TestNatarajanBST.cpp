@@ -6,9 +6,12 @@
 
 TEST_CASE("Natarajan Insertion sequential check") {
   NatarajanBST<int> tree;
-  for (int i = 0; i < 100; i++) REQUIRE(!tree[i]);
-  for (int i = 0; i < 100; i++) REQUIRE(tree.insert(i));
-  for (int i = 0; i < 100; i++) REQUIRE(tree[i]);
+  for (int i = 0; i < 100; i++)
+    REQUIRE(!tree[i]);
+  for (int i = 0; i < 100; i++)
+    REQUIRE(tree.insert(i));
+  for (int i = 0; i < 100; i++)
+    REQUIRE(tree[i]);
 }
 
 TEST_CASE("Natarajan Deletion sequential check") {
@@ -16,11 +19,14 @@ TEST_CASE("Natarajan Deletion sequential check") {
     constexpr int NUM = 1000;
     NatarajanBST<int> tree;
 
-    for (int i = 0; i < NUM; i++) REQUIRE(tree.insert(i));
+    for (int i = 0; i < NUM; i++)
+      REQUIRE(tree.insert(i));
     for (int i = 0; i < NUM; i++) {
       REQUIRE(tree.remove(i));
-      for (int k = 0; k <= i; k++) REQUIRE(!tree[k]);
-      for (int k = i+1; k < NUM; k++) REQUIRE(tree[k]);
+      for (int k = 0; k <= i; k++)
+        REQUIRE(!tree[k]);
+      for (int k = i + 1; k < NUM; k++)
+        REQUIRE(tree[k]);
     }
   }
 
@@ -28,21 +34,25 @@ TEST_CASE("Natarajan Deletion sequential check") {
     constexpr int NUM = 1000;
     NatarajanBST<int> tree;
 
-    const std::function<void(int,int)> balancedInsertFunc = [&tree,&balancedInsertFunc](int start, int end) {
-      if (start > end) return;
-      int mid = start + (end - start) / 2;
-      REQUIRE(tree.insert(mid));
+    const std::function<void(int, int)> balancedInsertFunc =
+        [&tree, &balancedInsertFunc](int start, int end) {
+          if (start > end)
+            return;
+          int mid = start + (end - start) / 2;
+          REQUIRE(tree.insert(mid));
 
-      balancedInsertFunc(start, mid-1);
-      balancedInsertFunc(mid+1, end);
-    };
+          balancedInsertFunc(start, mid - 1);
+          balancedInsertFunc(mid + 1, end);
+        };
 
-    balancedInsertFunc(0, NUM-1);
+    balancedInsertFunc(0, NUM - 1);
 
     for (int i = 0; i < NUM; i++) {
       REQUIRE(tree.remove(i));
-      for (int k = 0; k <= i; k++) REQUIRE(!tree[k]);
-      for (int k = i+1; k < NUM; k++) REQUIRE(tree[k]);
+      for (int k = 0; k <= i; k++)
+        REQUIRE(!tree[k]);
+      for (int k = i + 1; k < NUM; k++)
+        REQUIRE(tree[k]);
     }
   }
 }
@@ -73,19 +83,22 @@ TEST_CASE("Insertion - Insertion Race") {
 }
 
 TEST_CASE("Natarajan Deletion - Deletion Race") {
-  constexpr int NUM_ITER = 10, NUM_THREADS = 50, NUM_ELEMS_PER_THREAD = 400, MOD = 64;
+  constexpr int NUM_ITER = 10, NUM_THREADS = 50, NUM_ELEMS_PER_THREAD = 400,
+                MOD = 64;
 
   for (int i = 0; i < NUM_ITER; i++) {
     NatarajanBST<int> tree;
     // Balanced tree insertion
-    const std::function<void(int, int)> balancedInsertFunc = [&tree, &balancedInsertFunc](int start, int end) {
-      if (start > end) return;
-      int mid = start + (end - start) / 2;
-      tree.insert(mid);
+    const std::function<void(int, int)> balancedInsertFunc =
+        [&tree, &balancedInsertFunc](int start, int end) {
+          if (start > end)
+            return;
+          int mid = start + (end - start) / 2;
+          tree.insert(mid);
 
-      balancedInsertFunc(start, mid - 1);
-      balancedInsertFunc(mid + 1, end);
-    };
+          balancedInsertFunc(start, mid - 1);
+          balancedInsertFunc(mid + 1, end);
+        };
 
     balancedInsertFunc(0, MOD * NUM_ELEMS_PER_THREAD - 1);
 
@@ -102,10 +115,12 @@ TEST_CASE("Natarajan Deletion - Deletion Race") {
       threads.emplace_back(deleteFunc, thread);
     }
 
-    for (int thread = 0; thread < NUM_THREADS; thread++) threads[thread].join();
+    for (int thread = 0; thread < NUM_THREADS; thread++)
+      threads[thread].join();
 
     for (int num = 0; num < NUM_THREADS * NUM_ELEMS_PER_THREAD; num++) {
-      if (num % MOD < NUM_THREADS) REQUIRE(!tree[num]);
+      if (num % MOD < NUM_THREADS)
+        REQUIRE(!tree[num]);
       else
         REQUIRE(tree[num]);
     }
@@ -120,39 +135,48 @@ TEST_CASE("Natarajan Insertion - Deletion Race") {
   for (int i = 0; i < NUM_ITER; i++) {
     NatarajanBST<int> tree;
     // Balanced tree insertion
-    const std::function<void(int, int)> balancedInsertFunc = [&tree, &balancedInsertFunc](int start, int end) {
-      if (start > end) return;
-      int mid = start + (end - start) / 2;
-      tree.insert(mid);
+    const std::function<void(int, int)> balancedInsertFunc =
+        [&tree, &balancedInsertFunc](int start, int end) {
+          if (start > end)
+            return;
+          int mid = start + (end - start) / 2;
+          tree.insert(mid);
 
-      balancedInsertFunc(start, mid - 1);
-      balancedInsertFunc(mid + 1, end);
-    };
+          balancedInsertFunc(start, mid - 1);
+          balancedInsertFunc(mid + 1, end);
+        };
 
-    balancedInsertFunc(0,  OFFSET-1);
+    balancedInsertFunc(0, OFFSET - 1);
 
-    const auto deleteFunc = [&tree,&DELETIONS_PER_THREAD](int start) {
-      for (int k = start * DELETIONS_PER_THREAD, e = (start + 1) * DELETIONS_PER_THREAD; k < e; k++) {
+    const auto deleteFunc = [&tree, &DELETIONS_PER_THREAD](int start) {
+      for (int k = start * DELETIONS_PER_THREAD,
+               e = (start + 1) * DELETIONS_PER_THREAD;
+           k < e; k++) {
         tree.remove(k);
       }
     };
 
-    const auto insertionFunc = [&tree,&OFFSET,&INSERTIONS_PER_THREAD](int start) {
+    const auto insertionFunc = [&tree, &OFFSET,
+                                &INSERTIONS_PER_THREAD](int start) {
       for (int k = 0; k < INSERTIONS_PER_THREAD; k++) {
-        tree.insert(OFFSET+start*INSERTIONS_PER_THREAD+k);
+        tree.insert(OFFSET + start * INSERTIONS_PER_THREAD + k);
       }
     };
 
     std::vector<std::thread> threads;
-    threads.reserve(NUM_THREADS*2);
+    threads.reserve(NUM_THREADS * 2);
     for (int thread = 0; thread < NUM_THREADS; thread++) {
       threads.emplace_back(deleteFunc, thread);
       threads.emplace_back(insertionFunc, thread);
     }
 
-    for (int thread = 0; thread < NUM_THREADS*2; thread++) threads[thread].join();
+    for (int thread = 0; thread < NUM_THREADS * 2; thread++)
+      threads[thread].join();
 
-    for (int num = 0; num < OFFSET; num++) REQUIRE(!tree[num]);
-    for (int num = OFFSET; num < OFFSET + INSERTIONS_PER_THREAD*NUM_THREADS; num++) REQUIRE(tree[num]);
+    for (int num = 0; num < OFFSET; num++)
+      REQUIRE(!tree[num]);
+    for (int num = OFFSET; num < OFFSET + INSERTIONS_PER_THREAD * NUM_THREADS;
+         num++)
+      REQUIRE(tree[num]);
   }
 }
