@@ -1,6 +1,7 @@
 #pragma once
 
 #include <limits>
+#include <mutex>
 #include <utility>
 
 #include "FGLBSTNode.h"
