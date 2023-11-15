@@ -43,22 +43,22 @@ struct NatarajanBST {
       std::atomic<uintptr_t>* childAddr =
           key < parent->key ? &(parent->left) : &(parent->right);
 
-      Node<T>*l = newLeaf, *r = getPointer<T>(childAddr->load());
+      Node<T>*l = newLeaf, *r = getPointer<T>(childAddr->load(std::memory_order_acquire));
 
       if (l->key > r->key)
         std::swap(l, r);
 
       newInternal->key = r->key;
-      newInternal->left.store(reinterpret_cast<uintptr_t>(l));
-      newInternal->right.store(reinterpret_cast<uintptr_t>(r));
+      newInternal->left.store(reinterpret_cast<uintptr_t>(l), std::memory_order_relaxed);
+      newInternal->right.store(reinterpret_cast<uintptr_t>(r), std::memory_order_relaxed);
 
       uintptr_t expected = getPointerUintRepr(leaf),
                 desired = getPointerUintRepr(newInternal);
 
-      if (childAddr->compare_exchange_strong(expected, desired))
+      if (childAddr->compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire))
         return true;
 
-      const auto c = childAddr->load();
+      const auto c = expected;
       if (getPointer<T>(c) == leaf && getFlags<T>(c) != 0) {
         // cleanup
         cleanup(key, s);
@@ -79,13 +79,13 @@ struct NatarajanBST {
           return false;
         uintptr_t expected = getPointerUintRepr<T>(leaf),
                   desired = expected | Node<T>::FLAG_MASK;
-        if (childAddr->compare_exchange_strong(expected, desired)) {
+        if (childAddr->compare_exchange_strong(expected, desired, std::memory_order_acq_rel, std::memory_order_acquire)) {
           mode = DeleteMode::CLEANUP;
           if (cleanup(key, s)) {
             return true;
           }
         } else {
-          uintptr_t childData = childAddr->load();
+          uintptr_t childData = childAddr->load(std::memory_order_acquire);
           if (getPointer<T>(childData) == leaf && getFlags<T>(childData) != 0)
             cleanup(key, s);
         }
@@ -104,10 +104,10 @@ struct NatarajanBST {
     s.ancestor = root;
     s.successor = reinterpret_cast<Node<T>*>(root->left.load());
     s.parent = s.successor;
-    s.leaf = getPointer<T>(s.successor->left.load());
+    s.leaf = getPointer<T>(s.successor->left.load(std::memory_order_acquire));
 
-    uintptr_t parentField = s.parent->left.load(),
-              currentField = s.leaf->left.load();
+    uintptr_t parentField = s.parent->left.load(std::memory_order_acquire),
+              currentField = s.leaf->left.load(std::memory_order_acquire);
 
     // Assumption: nullptr will be 0, use NULL?
     for (Node<T>* current = getPointer<T>(currentField); current != nullptr;
@@ -121,9 +121,9 @@ struct NatarajanBST {
       parentField = currentField;
 
       if (key < current->key)
-        currentField = current->left.load();
+        currentField = current->left.load(std::memory_order_acquire);
       else
-        currentField = current->right.load();
+        currentField = current->right.load(std::memory_order_acquire);
     }
 
     return s;
@@ -138,20 +138,20 @@ struct NatarajanBST {
     if (key < parent->key)
       std::swap(childAddr, siblingAddr);
 
-    if ((childAddr->load() & Node<T>::FLAG_MASK) == 0)
+    if ((childAddr->load(std::memory_order_acquire) & Node<T>::FLAG_MASK) == 0)
       siblingAddr = childAddr;
 
     uintptr_t siblingData =
-        siblingAddr->fetch_or(Node<T>::TAG_MASK) & (~Node<T>::TAG_MASK);
+        siblingAddr->fetch_or(Node<T>::TAG_MASK, std::memory_order_seq_cst) & (~Node<T>::TAG_MASK);
     uintptr_t expected = getPointerUintRepr(successor);  // Remove all flags
-    return successorAddr->compare_exchange_strong(expected, siblingData);
+    return successorAddr->compare_exchange_strong(expected, siblingData, std::memory_order_acq_rel, std::memory_order_acquire);
   }
 
   void cleanup_all(Node<T>* node) {
     if (node == nullptr)
       return;
-    cleanup_all(getPointer<T>(node->left.load()));
-    cleanup_all(getPointer<T>(node->right.load()));
+    cleanup_all(getPointer<T>(node->left.load(std::memory_order_acquire)));
+    cleanup_all(getPointer<T>(node->right.load(std::memory_order_acquire)));
     delete node;
   }
 };
