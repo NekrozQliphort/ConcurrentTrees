@@ -14,9 +14,12 @@ struct CGLBST {
     CGLBSTNode<T>* curNode = root;
 
     while (curNode != nullptr) {
-      if (key == curNode->key) return true;
-      else if (key < curNode->key) curNode = curNode->left;
-      else curNode = curNode->right;
+      if (key == curNode->key)
+        return true;
+      else if (key < curNode->key)
+        curNode = curNode->left;
+      else
+        curNode = curNode->right;
     }
     return false;
   }
@@ -28,7 +31,7 @@ struct CGLBST {
       return true;
     }
 
-    CGLBSTNode<T>*cur = root;
+    CGLBSTNode<T>* cur = root;
 
     while (cur->key != key) {
       if (key < cur->key) {
@@ -51,17 +54,22 @@ struct CGLBST {
 
   bool remove(const T& key) {
     std::unique_lock<std::shared_mutex> lk{mut};
-    if (root == nullptr) return false;
+    if (root == nullptr)
+      return false;
 
-    CGLBSTNode<T> **curPtr = &root, *cur = root;
+    CGLBSTNode<T>**curPtr = &root, *cur = root;
 
     while (cur->key != key) {
       if (key < cur->key) {
-        if (cur->left == nullptr) return false;
-        curPtr = &cur->left; cur = cur->left;
+        if (cur->left == nullptr)
+          return false;
+        curPtr = &cur->left;
+        cur = cur->left;
       } else {
-        if (cur->right == nullptr) return false;
-        curPtr = &cur->right; cur = cur->right;
+        if (cur->right == nullptr)
+          return false;
+        curPtr = &cur->right;
+        cur = cur->right;
       }
     }
 
@@ -73,9 +81,8 @@ struct CGLBST {
       return true;
     }
 
-
-    CGLBSTNode<T> **inorderSuccessorPtr = &(cur->left);
-    CGLBSTNode<T> *inorderSuccessor = cur->left;
+    CGLBSTNode<T>** inorderSuccessorPtr = &(cur->left);
+    CGLBSTNode<T>* inorderSuccessor = cur->left;
     while (inorderSuccessor->right != nullptr) {
       inorderSuccessorPtr = &(inorderSuccessor->right);
       inorderSuccessor = inorderSuccessor->right;
@@ -85,5 +92,4 @@ struct CGLBST {
     *inorderSuccessorPtr = inorderSuccessor->left;
     return true;
   }
-
 };

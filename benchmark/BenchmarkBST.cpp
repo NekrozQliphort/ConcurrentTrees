@@ -1,13 +1,13 @@
 #include <benchmark/benchmark.h>
 
 #include <vector>
+#include "src/CoarseGrainedLockingBST/CGLBST.h"
 #include "src/FineGrainedLockingBST/FGLBST.h"
 #include "src/NatarajanBST/NatarajanBST.h"
-#include "src/CoarseGrainedLockingBST/CGLBST.h"
 
 constexpr int TOTAL_ELEMS = 8388608;
 constexpr int MAX_THREADS = 128;
-constexpr int MIN_TIME = 8; // seconds
+constexpr int MIN_TIME = 8;  // seconds
 
 void createBalancedInsertion(std::vector<int>& container, int start, int end) {
   if (start > end)
@@ -92,16 +92,43 @@ static void BM_WRITE_INTENSIVE(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_READ_INTENSIVE<NatarajanBST<int>>)->ThreadRange(1, MAX_THREADS)->MinTime(MIN_TIME)->Unit(benchmark::kMillisecond);
-BENCHMARK(BM_READ_INTENSIVE<FGLBST<int>>)->ThreadRange(1, MAX_THREADS)->MinTime(MIN_TIME)->Unit(benchmark::kMillisecond);
-BENCHMARK(BM_READ_INTENSIVE<CGLBST<int>>)->ThreadRange(1, MAX_THREADS)->MinTime(MIN_TIME)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_READ_INTENSIVE<NatarajanBST<int>>)
+    ->ThreadRange(1, MAX_THREADS)
+    ->MinTime(MIN_TIME)
+    ->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_READ_INTENSIVE<FGLBST<int>>)
+    ->ThreadRange(1, MAX_THREADS)
+    ->MinTime(MIN_TIME)
+    ->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_READ_INTENSIVE<CGLBST<int>>)
+    ->ThreadRange(1, MAX_THREADS)
+    ->MinTime(MIN_TIME)
+    ->Unit(benchmark::kMillisecond);
 
-BENCHMARK(BM_WRITE_INTENSIVE<NatarajanBST<int>>)->ThreadRange(1, MAX_THREADS)->MinTime(MIN_TIME)->Unit(benchmark::kMillisecond);
-BENCHMARK(BM_WRITE_INTENSIVE<FGLBST<int>>)->ThreadRange(1, MAX_THREADS)->MinTime(MIN_TIME)->Unit(benchmark::kMillisecond);
-BENCHMARK(BM_WRITE_INTENSIVE<CGLBST<int>>)->ThreadRange(1, MAX_THREADS)->MinTime(MIN_TIME)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_WRITE_INTENSIVE<NatarajanBST<int>>)
+    ->ThreadRange(1, MAX_THREADS)
+    ->MinTime(MIN_TIME)
+    ->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_WRITE_INTENSIVE<FGLBST<int>>)
+    ->ThreadRange(1, MAX_THREADS)
+    ->MinTime(MIN_TIME)
+    ->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_WRITE_INTENSIVE<CGLBST<int>>)
+    ->ThreadRange(1, MAX_THREADS)
+    ->MinTime(MIN_TIME)
+    ->Unit(benchmark::kMillisecond);
 
-BENCHMARK(BM_READ_WRITE<NatarajanBST<int>>)->ThreadRange(1, MAX_THREADS)->MinTime(MIN_TIME)->Unit(benchmark::kMillisecond);
-BENCHMARK(BM_READ_WRITE<FGLBST<int>>)->ThreadRange(1, MAX_THREADS)->MinTime(MIN_TIME)->Unit(benchmark::kMillisecond);
-BENCHMARK(BM_READ_WRITE<CGLBST<int>>)->ThreadRange(1, MAX_THREADS)->MinTime(MIN_TIME)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_READ_WRITE<NatarajanBST<int>>)
+    ->ThreadRange(1, MAX_THREADS)
+    ->MinTime(MIN_TIME)
+    ->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_READ_WRITE<FGLBST<int>>)
+    ->ThreadRange(1, MAX_THREADS)
+    ->MinTime(MIN_TIME)
+    ->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_READ_WRITE<CGLBST<int>>)
+    ->ThreadRange(1, MAX_THREADS)
+    ->MinTime(MIN_TIME)
+    ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();

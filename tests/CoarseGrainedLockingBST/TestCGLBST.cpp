@@ -87,7 +87,7 @@ TEST_CASE("CGL Insertion - Insertion Race") {
 
 TEST_CASE("CGL Deletion - Deletion Race") {
   constexpr int NUM_ITER = 10, NUM_THREADS = 50, NUM_ELEMS_PER_THREAD = 400,
-      MOD = 64;
+                MOD = 64;
 
   for (int i = 0; i < NUM_ITER; i++) {
     CGLBST<int> tree;
@@ -163,7 +163,7 @@ TEST_CASE("CGLBST Insertion - Deletion Race") {
     };
 
     const auto insertionFunc = [&tree, &OFFSET,
-        &INSERTIONS_PER_THREAD](int start) {
+                                &INSERTIONS_PER_THREAD](int start) {
       for (int k = 0; k < INSERTIONS_PER_THREAD; k++) {
         tree.insert(OFFSET + start * INSERTIONS_PER_THREAD + k);
       }

@@ -33,8 +33,8 @@ struct FGLBST {
   }
 
   bool insert(const T& key) {
-    std::unique_lock<std::shared_mutex> lk {root->mut};
-    FGLBSTNode<T> *cur = root;
+    std::unique_lock<std::shared_mutex> lk{root->mut};
+    FGLBSTNode<T>* cur = root;
 
     while (cur->key != key) {
       if (key < cur->key) {
@@ -99,7 +99,7 @@ struct FGLBST {
     std::unique_lock<std::shared_mutex> inorderParentLk,
         inorderSuccessorLk{child->left->mut};
     FGLBSTNode<T>** inorderSuccessorPtr = &(child->left);
-    FGLBSTNode<T> *inorderSuccessor = child->left;
+    FGLBSTNode<T>* inorderSuccessor = child->left;
     while (inorderSuccessor->right != nullptr) {
       inorderSuccessorPtr = &(inorderSuccessor->right);
       inorderSuccessor = inorderSuccessor->right;
