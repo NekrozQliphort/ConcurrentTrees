@@ -61,6 +61,7 @@ static void BM_READ_WRITE(benchmark::State& state) {
       bst.insert(toBeInserted);
       sum += bst[elem];
       sum += bst[toBeInserted];
+      bst.remove(toBeInserted);
     }
     volatile long long temp = sum;
   }
@@ -87,6 +88,7 @@ static void BM_WRITE_INTENSIVE(benchmark::State& state) {
       const int toBeInserted =
           TOTAL_ELEMS + CAPACITY_PER_THREAD * state.thread_index() + elem;
       sum += bst.insert(toBeInserted);
+      sum += bst.remove(toBeInserted);
     }
     volatile long long temp = sum;
   }
