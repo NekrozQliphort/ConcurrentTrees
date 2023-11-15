@@ -10,6 +10,8 @@ struct CGLBST {
   CGLBSTNode<T>* root = nullptr;
   std::shared_mutex mut{};
 
+  ~CGLBST() { cleanup_all(root); }
+
   bool operator[](const T& key) {
     std::shared_lock<std::shared_mutex> lk{mut};
     CGLBSTNode<T>* curNode = root;
@@ -92,5 +94,13 @@ struct CGLBST {
     cur->key = inorderSuccessor->key;
     *inorderSuccessorPtr = inorderSuccessor->left;
     return true;
+  }
+
+  void cleanup_all(CGLBSTNode<T>* node) {
+    if (node == nullptr)
+      return;
+    cleanup_all(node->left);
+    cleanup_all(node->right);
+    delete node;
   }
 };

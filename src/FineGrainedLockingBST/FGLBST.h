@@ -11,6 +11,8 @@ template <class T, T inf0 = std::numeric_limits<T>::max() - 1,
 struct FGLBST {
   FGLBSTNode<T>* root = new FGLBSTNode<T>(inf1, new FGLBSTNode<T>(inf0));
 
+  ~FGLBST() { cleanup_all(root); }
+
   bool operator[](const T& key) {
     std::shared_lock<std::shared_mutex> lk{root->mut};
     FGLBSTNode<T>* curNode = root;
@@ -112,5 +114,13 @@ struct FGLBST {
     child->key = inorderSuccessor->key;
     *inorderSuccessorPtr = inorderSuccessor->left;
     return true;
+  }
+
+  void cleanup_all(FGLBSTNode<T>* node) {
+    if (node == nullptr)
+      return;
+    cleanup_all(node->left);
+    cleanup_all(node->right);
+    delete node;
   }
 };
