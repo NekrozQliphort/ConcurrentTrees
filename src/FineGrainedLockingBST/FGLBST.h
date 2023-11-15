@@ -16,53 +16,45 @@ struct FGLBST {
     FGLBSTNode<T>* curNode = root;
     // insert
 
-    while (true) {
-      if (key == curNode->key)
-        return true;
-      else if (key < curNode->key) {
+    while (key != curNode->key) {
+      if (key < curNode->key) {
         if (curNode->left == nullptr)
           return false;
         curNode = curNode->left;
-        std::shared_lock<std::shared_mutex> childLk{curNode->mut};
-        lk = std::move(childLk);
+        lk = std::shared_lock<std::shared_mutex>{curNode->mut};
       } else {
         if (curNode->right == nullptr)
           return false;
         curNode = curNode->right;
-        std::shared_lock<std::shared_mutex> childLk{curNode->mut};
-        lk = std::move(childLk);
+        lk = std::shared_lock<std::shared_mutex>{curNode->mut};
       }
     }
+    return true;
   }
 
   bool insert(const T& key) {
-    std::unique_lock<std::shared_mutex> lk{root->mut};
-    FGLBSTNode<T>*cur = root, *child = root->left;
+    std::unique_lock<std::shared_mutex> lk {root->mut};
+    FGLBSTNode<T> *cur = root;
 
-    while (true) {
-      std::unique_lock<std::shared_mutex> childLk{child->mut};
-      if (child->key == key)
-        return false;
-      else if (key < child->key) {
-        if (child->left == nullptr)
-          break;
-        cur = child;
-        child = child->left;
-        lk = std::move(childLk);
+    while (cur->key != key) {
+      if (key < cur->key) {
+        if (cur->left == nullptr) {
+          cur->left = new FGLBSTNode<T>(key);
+          return true;
+        }
+        cur = cur->left;
+        lk = std::unique_lock<std::shared_mutex>{cur->mut};
       } else {
-        if (child->right == nullptr)
-          break;
-        cur = child;
-        child = child->right;
-        lk = std::move(childLk);
+        if (cur->right == nullptr) {
+          cur->right = new FGLBSTNode<T>(key);
+          return true;
+        }
+        cur = cur->right;
+        lk = std::unique_lock<std::shared_mutex>{cur->mut};
       }
     }
 
-    if (key < child->key)
-      child->left = new FGLBSTNode<T>(key);
-    else
-      child->right = new FGLBSTNode<T>(key);
-    return true;
+    return false;
   }
 
   bool remove(const T& key) {
@@ -107,9 +99,8 @@ struct FGLBST {
     std::unique_lock<std::shared_mutex> inorderParentLk,
         inorderSuccessorLk{child->left->mut};
     FGLBSTNode<T>** inorderSuccessorPtr = &(child->left);
-    FGLBSTNode<T>*inorderParent = child, *inorderSuccessor = child->left;
+    FGLBSTNode<T> *inorderSuccessor = child->left;
     while (inorderSuccessor->right != nullptr) {
-      inorderParent = inorderSuccessor;
       inorderSuccessorPtr = &(inorderSuccessor->right);
       inorderSuccessor = inorderSuccessor->right;
 
