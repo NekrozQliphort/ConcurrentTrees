@@ -24,7 +24,7 @@ static void BM_READ_INTENSIVE(benchmark::State& state) {
   std::vector<int> elems;
 
   if (state.thread_index() == 0) {
-    createBalancedInsertion(elems, 0, TOTAL_ELEMS - 1);
+    createBalancedInsertion(elems, 0, TOTAL_ELEMS / state.threads());
     for (const int elem : elems)
       bst.insert(elem);
   }
@@ -110,9 +110,7 @@ BENCHMARK(BM_WRITE_INTENSIVE<CGLBST<int>>)
 
 BENCHMARK(BM_READ_WRITE<NatarajanBST<int>>)
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_WRITE<FGLBST<int>>)
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_WRITE<CGLBST<int>>)
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<FGLBST<int>>)->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<CGLBST<int>>)->ThreadRange(MIN_THREADS, MAX_THREADS);
 
 BENCHMARK_MAIN();
