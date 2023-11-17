@@ -31,8 +31,12 @@ file(GLOB_RECURSE BENCHMARK_FILES benchmark/*.h benchmark/*.cpp)
 include_directories(.)
 
 add_executable(bsttest ${TEST_FILES} ${CONCURRENT_TREE_FILES})
-add_executable(bstbenchmark ${BENCHMARK_FILES} ${CONCURRENT_TREE_FILES})
-target_link_libraries(bstbenchmark benchmark::benchmark)
+
+foreach( benchmarkfile ${BENCHMARK_FILES} )
+    get_filename_component( benchmarkname ${benchmarkfile} NAME_WE )
+    add_executable( ${benchmarkname} ${benchmarkfile} ${CONCURRENT_TREE_FILES})
+    target_link_libraries( ${benchmarkname} benchmark::benchmark )
+endforeach( benchmarkfile ${BENCHMARK_FILES} )
 
 if(WITH_TSAN AND NOT MSVC)
     MESSAGE(STATUS "Compiling with thread sanitizer")
