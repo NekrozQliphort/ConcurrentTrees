@@ -11,7 +11,7 @@ struct Node {
   std::atomic<OperationFlaggedPointer>
       op{};  // require uintptr_t as we need last 2 bits for flagging
   int local_height{}, lh{}, rh{};
-  bool deleted{}, removed{};
+  std::atomic<bool> deleted{}, removed{};
 
   explicit Node(T key, Node<T>* left = nullptr, Node<T>* right = nullptr)
       : key{}, left{left}, right{right} {}
@@ -30,6 +30,7 @@ Operation<T>* unFlag(std::atomic<OperationFlaggedPointer>& op) {
 }
 
 template <typename T>
-OperationFlaggedPointer flag(Operation<T>* op, OperationConstants::Flags flags) {
+OperationFlaggedPointer flag(Operation<T>* op,
+                             OperationConstants::Flags flags) {
   return reinterpret_cast<OperationFlaggedPointer>(op) | flags;
 }

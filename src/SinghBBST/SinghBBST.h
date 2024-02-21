@@ -26,7 +26,7 @@ struct SinghBBST {
         result = true;
     }
 
-    if (result && node->deleted) {
+    if (result && node->deleted.load()) {
       return getFlag(node->op) == OperationConstants::INSERT &&
              get<InsertOp<T>>(*getPointer<T>(nodeOp)).newNode->key == k;
     }
@@ -38,15 +38,20 @@ struct SinghBBST {
     Operation<T>* casOp{nullptr};
     while (true) {
       SeekRecord<T> result = seek(key, root, root);
-      if (result.result == SeekResultState::FOUND && !result.node->deleted) return false;
-      if (newNode == nullptr) newNode = new Node<T>(key);
+      if (result.result == SeekResultState::FOUND &&
+          !result.node->deleted.load())
+        return false;
+      if (newNode == nullptr)
+        newNode = new Node<T>(key);
 
       bool isLeft = (result.result == SeekResultState::NOT_FOUND_L);
-      Node<T> *old = isLeft ? result.node->left.load() : result.node->right.load();
+      Node<T>* old =
+          isLeft ? result.node->left.load() : result.node->right.load();
 
       casOp = new Operation<T>();
       InsertOp<T>& insertOp = get<InsertOp<T>>(*casOp);
-      if (result.result == SeekResultState::FOUND && result.node->deleted)
+      if (result.result == SeekResultState::FOUND &&
+          result.node->deleted.load())
         insertOp.isUpdate = true;
 
       insertOp.isLeft = isLeft;
@@ -55,13 +60,33 @@ struct SinghBBST {
 
       OperationFlaggedPointer expected = result.nodeOp->load();
 
-      if (result.node->op.compare_exchange_strong(expected, flag(casOp, OperationConstants::INSERT))) {
+      if (result.node->op.compare_exchange_strong(
+              expected, flag(casOp, OperationConstants::INSERT))) {
         helpInsert(casOp, result.node);
         return true;
       }
     }
 
     std::unreachable();
+  }
+
+  bool remove(const T& key) {
+    while (true) {
+      SeekRecord<T> result = seek(key, root, root);
+      if (result.result != SeekResultState::FOUND)
+        return false;
+      if (result.node->deleted.load()) {
+        if (getFlag(result.node->op.load()) != OperationConstants::INSERT)
+          return false;
+      } else {
+        if (getFlag(result.node->op.load()) != OperationConstants::NONE) {
+          bool expected = false, desired = true;
+          if (result.node->deleted.compare_exchange_strong(desired, expected)) {
+            return true;
+          }
+        }
+      }
+    }
   }
 
  private:
@@ -120,5 +145,3 @@ struct SinghBBST {
     return res;
   }
 };
-
-template struct SinghBBST<int>;
