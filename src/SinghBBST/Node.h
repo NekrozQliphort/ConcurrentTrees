@@ -28,3 +28,8 @@ Operation<T>* unFlag(std::atomic<OperationFlaggedPointer>& op) {
   return reinterpret_cast<Operation<T>*>(op &=
                                          OperationConstants::POINTER_MASK);
 }
+
+template <typename T>
+OperationFlaggedPointer flag(Operation<T>* op, OperationConstants::Flags flags) {
+  return reinterpret_cast<OperationFlaggedPointer>(op) | flags;
+}
