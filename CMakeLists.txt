@@ -6,7 +6,7 @@ include(FetchContent)
 option(WITH_TSAN "Build tests and benchmarks with ThreadSanitizer" OFF)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -Wall -O2")
 
