@@ -14,7 +14,7 @@ struct Node {
   std::atomic<bool> deleted{}, removed{};
 
   explicit Node(T key, Node<T>* left = nullptr, Node<T>* right = nullptr)
-      : key{}, left{left}, right{right} {}
+      : key{key}, left{left}, right{right} {}
 };
 
 template <typename T>

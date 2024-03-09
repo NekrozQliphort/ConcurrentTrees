@@ -6,10 +6,10 @@
 #include "Operation.h"
 #include "SeekRecord.h"
 
-template <class T>
+template <class T, T inf = std::numeric_limits<T>::max()>
 struct SinghBBST {
   bool operator[](const T& k) {
-    Node<T>*node = root, *nxt = root->right.load();
+    Node<T>*node = root, *nxt = root->left.load();
     OperationFlaggedPointer nodeOp = 0;
     T nodeKey;
     bool result = false;
@@ -30,7 +30,7 @@ struct SinghBBST {
       return getFlag(node->op) == OperationConstants::INSERT &&
              get<InsertOp<T>>(*getPointer<T>(nodeOp)).newNode->key == k;
     }
-    return false;
+    return result;
   }
 
   bool insert(const T& key) {
@@ -90,10 +90,22 @@ struct SinghBBST {
   }
 
  private:
-  Node<T>* root = new Node<T>(T{});
+  Node<T>* root = new Node<T>(T{inf});
 
   void helpInsert(Operation<T>* op, Node<T>* dest) {
-    // TODO: Implement
+    // TODO: Assumed op to be unflagged
+    InsertOp<T>& insertOp = get<InsertOp<T>>(*op);
+    if (insertOp.isUpdate) {
+      bool expected = true, desired = false;
+      dest->deleted.compare_exchange_strong(expected, desired);
+    } else {
+      std::atomic<Node<T>*>& addr = insertOp.isLeft ? dest->left : dest->right;
+      addr.compare_exchange_strong(insertOp.expectedNode, insertOp.newNode);
+    }
+
+    OperationFlaggedPointer expected = flag(op, OperationConstants::INSERT),
+                            desired = flag(op, OperationConstants::NONE);
+    dest->op.compare_exchange_strong(expected, desired);
   }
 
   void help(Node<T>* parent, std::atomic<OperationFlaggedPointer>* parentOp,
@@ -108,7 +120,7 @@ struct SinghBBST {
 
   retry:
     res.result = SeekResultState::NOT_FOUND_L;
-    res.node = root;
+    res.node = auxRoot;
     res.nodeOp = &res.node->op;
 
     if (getFlag(*res.nodeOp) != OperationConstants::NONE) {
@@ -118,7 +130,7 @@ struct SinghBBST {
       }
     }
 
-    nxt = res.node->right.load();
+    nxt = res.node->left.load();
     while (nxt != nullptr) {
       res.parent = res.node;
       res.parentOp = res.nodeOp;
@@ -145,3 +157,5 @@ struct SinghBBST {
     return res;
   }
 };
+
+template struct SinghBBST<int>;
