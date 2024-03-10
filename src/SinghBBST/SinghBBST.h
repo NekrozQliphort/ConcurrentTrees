@@ -35,7 +35,6 @@ struct SinghBBST {
 
   bool insert(const T& key) {
     Node<T>* newNode{nullptr};
-    Operation<T>* casOp{nullptr};
     while (true) {
       SeekRecord<T> result = seek(key, root, root);
       if (result.result == SeekResultState::FOUND &&
@@ -48,20 +47,15 @@ struct SinghBBST {
       Node<T>* old =
           isLeft ? result.node->left.load() : result.node->right.load();
 
-      casOp = new Operation<T>();
-      InsertOp<T>& insertOp = get<InsertOp<T>>(*casOp);
-      if (result.result == SeekResultState::FOUND &&
-          result.node->deleted.load())
-        insertOp.isUpdate = true;
-
-      insertOp.isLeft = isLeft;
-      insertOp.expectedNode = old;
-      insertOp.newNode = newNode;
-
-      OperationFlaggedPointer expected = result.nodeOp->load();
+      Operation<T>* casOp = new Operation<T>(
+          InsertOp<T>{.isLeft = isLeft,
+                      .isUpdate = result.result == SeekResultState::FOUND &&
+                                  result.node->deleted.load(),
+                      .expectedNode = old,
+                      .newNode = newNode});
 
       if (result.node->op.compare_exchange_strong(
-              expected, flag(casOp, OperationConstants::INSERT))) {
+              result.nodeOp, flag(casOp, OperationConstants::INSERT))) {
         helpInsert(casOp, result.node);
         return true;
       }
@@ -79,9 +73,9 @@ struct SinghBBST {
         if (getFlag(result.node->op.load()) != OperationConstants::INSERT)
           return false;
       } else {
-        if (getFlag(result.node->op.load()) != OperationConstants::NONE) {
+        if (getFlag(result.node->op.load()) == OperationConstants::NONE) {
           bool expected = false, desired = true;
-          if (result.node->deleted.compare_exchange_strong(desired, expected)) {
+          if (result.node->deleted.compare_exchange_strong(expected, desired)) {
             return true;
           }
         }
@@ -91,6 +85,25 @@ struct SinghBBST {
 
  private:
   Node<T>* root = new Node<T>(T{inf});
+
+  void helpMarked(Node<T>* parent, Operation<T>* parentOp, Node<T>* node) {
+    Node<T>* child = node->left.load();
+    if (child == nullptr)
+      node->right.load();
+
+    node->removed = true;
+    Operation<T>* casOp =
+        new Operation<T>(InsertOp<T>{.isLeft = node == parent->left,
+                                     .expectedNode = node,
+                                     .newNode = child});
+
+    OperationFlaggedPointer expected =
+        reinterpret_cast<OperationFlaggedPointer>(parentOp);
+    if (parent->op.compare_exchange_strong(
+            expected, flag(casOp, OperationConstants::INSERT))) {
+      helpInsert(casOp, parent);
+    }
+  }
 
   void helpInsert(Operation<T>* op, Node<T>* dest) {
     // TODO: Assumed op to be unflagged
@@ -108,9 +121,14 @@ struct SinghBBST {
     dest->op.compare_exchange_strong(expected, desired);
   }
 
-  void help(Node<T>* parent, std::atomic<OperationFlaggedPointer>* parentOp,
-            Node<T>* node, std::atomic<OperationFlaggedPointer>* nodeOp) {
+  void help(Node<T>* parent, OperationFlaggedPointer parentOp, Node<T>* node,
+            OperationFlaggedPointer nodeOp) {
     // TODO: Implement
+    if (getFlag(nodeOp) == OperationConstants::INSERT) {
+      helpInsert(unFlag<T>(nodeOp), node);
+    } else if (getFlag(nodeOp) == OperationConstants::MARK) {
+      helpMarked(parent, reinterpret_cast<Operation<T>*>(parentOp), node);
+    }
   }
 
   SeekRecord<T> seek(const T& key, Node<T>* auxRoot, Node<T>* root) {
@@ -121,21 +139,21 @@ struct SinghBBST {
   retry:
     res.result = SeekResultState::NOT_FOUND_L;
     res.node = auxRoot;
-    res.nodeOp = &res.node->op;
+    res.nodeOp = res.node->op.load();
 
-    if (getFlag(*res.nodeOp) != OperationConstants::NONE) {
+    if (getFlag(res.nodeOp) != OperationConstants::NONE) {
       if (auxRoot == root) {
-        helpInsert(unFlag<T>(*res.nodeOp), res.node);
+        helpInsert(unFlag<T>(res.nodeOp), res.node);
         goto retry;
       }
     }
 
     nxt = res.node->left.load();
-    while (nxt != nullptr) {
+    while (nxt != nullptr && res.result != SeekResultState::FOUND) {
       res.parent = res.node;
       res.parentOp = res.nodeOp;
       res.node = nxt;
-      res.nodeOp = &res.node->op;
+      res.nodeOp = res.node->op.load();
       nodeKey = res.node->key;
 
       if (key < nodeKey) {
@@ -146,12 +164,11 @@ struct SinghBBST {
         nxt = res.node->right.load();
       } else {
         res.result = SeekResultState::FOUND;
-        break;
       }
     }
 
-    if (getFlag(res.nodeOp->load()) != OperationConstants::NONE) {
-      help(res.parent, res.parentOp, res.node, res.parentOp);
+    if (getFlag(res.nodeOp) != OperationConstants::NONE) {
+      help(res.parent, res.parentOp, res.node, res.nodeOp);
       goto retry;
     }
     return res;

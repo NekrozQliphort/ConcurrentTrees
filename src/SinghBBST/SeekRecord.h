@@ -9,5 +9,5 @@ template <typename T>
 struct SeekRecord {
   SeekResultState result;
   Node<T>*parent, *node;
-  std::atomic<OperationFlaggedPointer>*parentOp, *nodeOp;
+  OperationFlaggedPointer parentOp, nodeOp;
 };

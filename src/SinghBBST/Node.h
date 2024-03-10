@@ -24,9 +24,8 @@ Operation<T>* getPointer(OperationFlaggedPointer ptr) {
 }
 
 template <typename T>
-Operation<T>* unFlag(std::atomic<OperationFlaggedPointer>& op) {
-  return reinterpret_cast<Operation<T>*>(op &=
-                                         OperationConstants::POINTER_MASK);
+Operation<T>* unFlag(OperationFlaggedPointer op) {
+  return reinterpret_cast<Operation<T>*>(op & OperationConstants::POINTER_MASK);
 }
 
 template <typename T>

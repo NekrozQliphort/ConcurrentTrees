@@ -39,6 +39,7 @@ struct RotateOp {
   bool rightR, dir;
 };
 
-uintptr_t getFlag(OperationFlaggedPointer ptr) {
-  return ptr & OperationConstants::FLAG_MASK;
+OperationConstants::Flags getFlag(OperationFlaggedPointer ptr) {
+  return static_cast<OperationConstants::Flags>(ptr &
+                                                OperationConstants::FLAG_MASK);
 }
