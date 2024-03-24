@@ -13,8 +13,17 @@ struct Node {
   int local_height{}, lh{}, rh{};
   std::atomic<bool> deleted{}, removed{};
 
-  explicit Node(T key, Node<T>* left = nullptr, Node<T>* right = nullptr)
-      : key{key}, left{left}, right{right} {}
+  explicit Node(T key, Node<T>* left = nullptr, Node<T>* right = nullptr,
+                int local_height = 0, int lh = 0, int rh = 0,
+                bool deleted = false, bool removed = false)
+      : key{key},
+        left{left},
+        right{right},
+        local_height{local_height},
+        lh{lh},
+        rh{rh},
+        deleted{deleted},
+        removed{removed} {}
 };
 
 template <typename T>

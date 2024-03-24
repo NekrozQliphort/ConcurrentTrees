@@ -3,6 +3,7 @@
 
 #include "catch.hpp"
 #include "src/SinghBBST/SinghBBST.h"
+#include "tests/utils.h"
 
 TEST_CASE("Singh BBST Sanity Check") {
   SinghBBST<int> tree;
@@ -181,3 +182,211 @@ TEST_CASE("Singh Insertion - Deletion Race") {
       REQUIRE(tree[num]);
   }
 }
+
+DEFINE_ACCESSOR(SinghBBST<int>, root)
+DEFINE_CALLER(SinghBBST<int>, helpRotate)
+
+TEST_CASE("Singh helpRotate Sanity Check") {
+  SECTION("Left Child Left Rotation") {
+    SinghBBST<int> tree;
+    int toInsert[6]{6, 2, 1, 4, 3, 5};
+    for (int i = 0; i < 6; i++)
+      tree.insert(toInsert[i]);
+
+    Node<int>* root = PrivateAccess::get_root(tree);
+    Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
+
+    node6 = root->left.load();
+    node2 = node6->left.load();
+    node1 = node2->left.load();
+    node4 = node2->right.load();
+    node3 = node4->left.load();
+    node5 = node4->right.load();
+
+    // Make sure the specific tree structure is correct
+    REQUIRE(node1->key == 1);
+    REQUIRE(node2->key == 2);
+    REQUIRE(node3->key == 3);
+    REQUIRE(node4->key == 4);
+    REQUIRE(node5->key == 5);
+    REQUIRE(node6->key == 6);
+
+    // Heights dont matter here
+
+    // Create a rotation operation
+    Operation<int>* rotationOp = new Operation<int>(
+        std::in_place_type<RotateOp<int>>, node6, node2, node4, true, true);
+    node3->op.store(flag(rotationOp, OperationConstants::Flags::ROTATE));
+    PrivateAccess::call_helpRotate(tree, rotationOp, node6, node2, node4);
+
+    // Check Structure
+    node6 = root->left.load();
+    node4 = node6->left.load();
+    node2 = node4->left.load();
+    node1 = node2->left.load();
+    node3 = node2->right.load();
+    node5 = node4->right.load();
+
+    REQUIRE(node1->key == 1);
+    REQUIRE(node2->key == 2);
+    REQUIRE(node3->key == 3);
+    REQUIRE(node4->key == 4);
+    REQUIRE(node5->key == 5);
+    REQUIRE(node6->key == 6);
+  }
+
+  SECTION("Right Child Left Rotation") {
+    SinghBBST<int> tree;
+    int toInsert[6]{1, 3, 2, 5, 4, 6};
+    for (int i = 0; i < 6; i++)
+      tree.insert(toInsert[i]);
+
+    Node<int>* root = PrivateAccess::get_root(tree);
+    Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
+
+    node1 = root->left.load();
+    node3 = node1->right.load();
+    node2 = node3->left.load();
+    node5 = node3->right.load();
+    node4 = node5->left.load();
+    node6 = node5->right.load();
+
+    // Make sure the specific tree structure is correct
+    REQUIRE(node1->key == 1);
+    REQUIRE(node2->key == 2);
+    REQUIRE(node3->key == 3);
+    REQUIRE(node4->key == 4);
+    REQUIRE(node5->key == 5);
+    REQUIRE(node6->key == 6);
+
+    // Heights dont matter here
+
+    // Create a rotation operation
+    Operation<int>* rotationOp = new Operation<int>(
+        std::in_place_type<RotateOp<int>>, node1, node3, node5, true, false);
+    node3->op.store(flag(rotationOp, OperationConstants::Flags::ROTATE));
+    PrivateAccess::call_helpRotate(tree, rotationOp, node1, node3, node5);
+
+    // Check Structure
+    node1 = root->left.load();
+    node5 = node1->right.load();
+    node3 = node5->left.load();
+    node6 = node5->right.load();
+    node2 = node3->left.load();
+    node4 = node3->right.load();
+
+    REQUIRE(node1->key == 1);
+    REQUIRE(node2->key == 2);
+    REQUIRE(node3->key == 3);
+    REQUIRE(node4->key == 4);
+    REQUIRE(node5->key == 5);
+    REQUIRE(node6->key == 6);
+  }
+
+  SECTION("Left Child Right Rotation") {
+    SinghBBST<int> tree;
+    int toInsert[6]{6, 4, 2, 5, 1, 3};
+    for (int i = 0; i < 6; i++)
+      tree.insert(toInsert[i]);
+
+    Node<int>* root = PrivateAccess::get_root(tree);
+    Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
+
+    node6 = root->left.load();
+    node4 = node6->left.load();
+    node2 = node4->left.load();
+    node1 = node2->left.load();
+    node3 = node2->right.load();
+    node5 = node4->right.load();
+
+    // Make sure the specific tree structure is correct
+    REQUIRE(node1->key == 1);
+    REQUIRE(node2->key == 2);
+    REQUIRE(node3->key == 3);
+    REQUIRE(node4->key == 4);
+    REQUIRE(node5->key == 5);
+    REQUIRE(node6->key == 6);
+
+    // Heights dont matter here
+
+    // Create a rotation operation
+    Operation<int>* rotationOp = new Operation<int>(
+        std::in_place_type<RotateOp<int>>, node6, node4, node2, false, true);
+    node3->op.store(flag(rotationOp, OperationConstants::Flags::ROTATE));
+    PrivateAccess::call_helpRotate(tree, rotationOp, node6, node4, node2);
+
+    // Check Structure
+    node6 = root->left.load();
+    node2 = node6->left.load();
+    node1 = node2->left.load();
+    node4 = node2->right.load();
+    node3 = node4->left.load();
+    node5 = node4->right.load();
+
+    REQUIRE(node1->key == 1);
+    REQUIRE(node2->key == 2);
+    REQUIRE(node3->key == 3);
+    REQUIRE(node4->key == 4);
+    REQUIRE(node5->key == 5);
+    REQUIRE(node6->key == 6);
+  }
+
+  SECTION("Right Child Right Rotation") {
+
+    SinghBBST<int> tree;
+    int toInsert[6]{1, 5, 3, 6, 2, 4};
+    for (int i = 0; i < 6; i++)
+      tree.insert(toInsert[i]);
+
+    Node<int>* root = PrivateAccess::get_root(tree);
+    Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
+
+    node1 = root->left.load();
+    node5 = node1->right.load();
+    node3 = node5->left.load();
+    node6 = node5->right.load();
+    node2 = node3->left.load();
+    node4 = node3->right.load();
+
+    // Make sure the specific tree structure is correct
+    REQUIRE(node1->key == 1);
+    REQUIRE(node2->key == 2);
+    REQUIRE(node3->key == 3);
+    REQUIRE(node4->key == 4);
+    REQUIRE(node5->key == 5);
+    REQUIRE(node6->key == 6);
+
+    // Heights dont matter here
+
+    // Create a rotation operation
+    Operation<int>* rotationOp = new Operation<int>(
+        std::in_place_type<RotateOp<int>>, node1, node5, node3, false, false);
+    node5->op.store(flag(rotationOp, OperationConstants::Flags::ROTATE));
+    PrivateAccess::call_helpRotate(tree, rotationOp, node1, node5, node3);
+
+    // Check Structure
+    node1 = root->left.load();
+    node3 = node1->right.load();
+    node2 = node3->left.load();
+    node5 = node3->right.load();
+    node4 = node5->left.load();
+    node6 = node5->right.load();
+
+    REQUIRE(node1->key == 1);
+    REQUIRE(node2->key == 2);
+    REQUIRE(node3->key == 3);
+    REQUIRE(node4->key == 4);
+    REQUIRE(node5->key == 5);
+    REQUIRE(node6->key == 6);
+  }
+}
+
+namespace {
+int updateHeights(Node<int>* cur) {
+  if (cur == nullptr)
+    return 0;
+  cur->lh = updateHeights(cur->left.load());
+  cur->rh = updateHeights(cur->right.load());
+  return cur->local_height = std::max(cur->lh, cur->rh) + 1;
+}
+}  // namespace

@@ -29,14 +29,33 @@ struct InsertOp {
   bool isUpdate{false};
   Node<T>* expectedNode;
   Node<T>* newNode;
+  InsertOp(bool isLeft, Node<T>* expectedNode, Node<T>* newNode)
+      : InsertOp{isLeft, false, expectedNode, newNode} {}
+  InsertOp(bool isLeft, bool isUpdate, Node<T>* expectedNode, Node<T>* newNode)
+      : isLeft{isLeft},
+        isUpdate{isUpdate},
+        expectedNode{expectedNode},
+        newNode{newNode} {}
 };
 
 template <typename T>
 struct RotateOp {
-  int state = -1;
-  uintptr_t parent, node, child;
-  Operation<T>*pOp, *nOp, *cOp;
-  bool rightR, dir;
+  constexpr static int UNDECIDED = 0, GRABBED_FIRST = 1, GRABBED_SECOND = 2,
+                       ROTATED = 3, DONE = 4;
+
+  std::atomic<Node<T>*> grandchild{nullptr};
+  std::atomic<int> state{0};
+
+  Node<T>*parent, *node, *child;
+  const bool isLeftRotation;  // is it left rotation
+  const bool isLeftChild;     // is node the left child of parent
+  RotateOp(Node<T>* parent, Node<T>* node, Node<T>* child, bool isLeftRotation,
+           bool isLeftChild)
+      : parent{parent},
+        node{node},
+        child{child},
+        isLeftRotation{isLeftRotation},
+        isLeftChild{isLeftChild} {}
 };
 
 OperationConstants::Flags getFlag(OperationFlaggedPointer ptr) {
