@@ -12,13 +12,6 @@ DEFINE_ACCESSOR(SinghBBST<int>, maintainenceThread)
 DEFINE_CALLER(SinghBBST<int>, helpRotate)
 DEFINE_CALLER(SinghBBST<int>, maintainHelper)
 
-void printAll(Node<int>* cur) {
-  if (cur == nullptr) return;
-  printAll(cur->left.load());
-  if (!cur->deleted.load()) printf("%d ", cur->key);
-  printAll(cur->right.load());
-}
-
 TEST_CASE("Singh BBST Sanity Check") {
   SinghBBST<int> tree;
 
@@ -102,7 +95,7 @@ TEST_CASE("Singh Insertion - Insertion Race") {
 }
 
 TEST_CASE("Singh Deletion - Deletion Race") {
-  constexpr int NUM_ITER = 10, NUM_THREADS = 50, NUM_ELEMS_PER_THREAD = 400,
+  constexpr int NUM_ITER = 100, NUM_THREADS = 50, NUM_ELEMS_PER_THREAD = 400,
                 MOD = 64;
 
   for (int i = 0; i < NUM_ITER; i++) {
@@ -147,7 +140,7 @@ TEST_CASE("Singh Deletion - Deletion Race") {
 }
 
 TEST_CASE("Singh Insertion - Deletion Race") {
-  constexpr int NUM_ITER = 10, NUM_THREADS = 64, OFFSET = 16384;
+  constexpr int NUM_ITER = 100, NUM_THREADS = 64, OFFSET = 16384;
   constexpr int DELETIONS_PER_THREAD = OFFSET / NUM_THREADS;
   constexpr int INSERTIONS_PER_THREAD = 500;
 

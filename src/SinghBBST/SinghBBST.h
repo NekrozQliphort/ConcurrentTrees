@@ -42,7 +42,7 @@ struct SinghBBST {
         result = true;
     }
 
-    if (result && node->deleted.load()) {
+    if (result && (node->deleted.load() & 1) == 1) {
       return getFlag(nodeOp) == OperationConstants::INSERT &&
             get<InsertOp<T>>(*getPointer<T>(nodeOp)).newNode->key == k;
     }
@@ -52,9 +52,9 @@ struct SinghBBST {
   bool insert(const T& key) {
     Node<T>* newNode{nullptr};
     while (true) {
-      SeekRecord<T> result = seek(key, root, root);
+      SeekRecord<T> result = seek(key);
       if (result.result == SeekResultState::FOUND &&
-          !result.node->deleted.load())
+          (result.node->deleted.load() & 1) == 0)
         return false;
       if (newNode == nullptr)
         newNode = new Node<T>(key);
@@ -66,7 +66,7 @@ struct SinghBBST {
       Operation<T>* casOp =
           new Operation<T>(std::in_place_type<InsertOp<T>>, isLeft,
                            result.result == SeekResultState::FOUND &&
-                               result.node->deleted.load(),
+                               (result.node->deleted.load() & 1) == 1, // TODO: Might need another fix
                            old, newNode);
       if (result.node->op.compare_exchange_strong(
               result.nodeOp, flag(casOp, OperationConstants::INSERT))) {
@@ -80,15 +80,15 @@ struct SinghBBST {
 
   bool remove(const T& key) {
     while (true) {
-      SeekRecord<T> result = seek(key, root, root);
+      SeekRecord<T> result = seek(key);
       if (result.result != SeekResultState::FOUND)
         return false;
-      if (result.node->deleted.load()) {
+      if ((result.node->deleted.load() & 1) == 1) {
         if (getFlag(result.node->op.load()) != OperationConstants::INSERT)
           return false;
       } else {
         if (getFlag(result.node->op.load()) == OperationConstants::NONE) {
-          bool expected = false, desired = true;
+          uint8_t expected = 0, desired = 1;
           if (result.node->deleted.compare_exchange_strong(expected, desired)) {
             return true;
           }
@@ -171,20 +171,22 @@ struct SinghBBST {
       } else if (seen_state == RotateOp<T>::GRABBED_SECOND) {
         // Create correct node to prepare for insertion and CAS newNode
         Node<T>* expected = rotateOp.grandchild.load();
+        Node<T>* newNode;
         if (rotateOp.isLeftRotation) {
-          Node<T>* newNode = new Node<T>{
+          uint8_t deleted = node->deleted.fetch_or(2) & 1u; // Make sure it's unusable for remove
+          newNode = new Node<T>{
               node->key,    node->left.load(), rotateOp.grandchild.load(),
-              node->lh,     node->rh,          node->deleted.load(),
+              node->local_height, node->lh,     node->rh,          deleted,
               node->removed.load()};
           newNode->op.store(flag(op, OperationConstants::ROTATE));
           if (!child->left.compare_exchange_strong(expected, newNode))
             delete newNode;  // Only happens successfully once
-
         } else {
-          Node<T>* newNode =
+          uint8_t deleted = node->deleted.fetch_or(2) & 1u;
+          newNode =
               new Node<T>{node->key,          rotateOp.grandchild.load(),
-                          node->right.load(), node->lh,
-                          node->rh,           node->deleted.load(),
+                          node->right.load(), node->local_height, node->lh,
+                          node->rh,           deleted,
                           node->removed.load()};
           newNode->op.store(flag(op, OperationConstants::ROTATE));
           if (!child->right.compare_exchange_strong(expected, newNode))
@@ -354,7 +356,8 @@ struct SinghBBST {
     // TODO: Assumed op to be unflagged
     InsertOp<T>& insertOp = get<InsertOp<T>>(*op);
     if (insertOp.isUpdate) {
-      bool expected = true, desired = false;
+      uint8_t expected = 1, desired = 0;
+      // Should not encounter 2/3
       dest->deleted.compare_exchange_strong(expected, desired);
     } else {
       std::atomic<Node<T>*>& addr = insertOp.isLeft ? dest->left : dest->right;
@@ -380,7 +383,7 @@ struct SinghBBST {
     }
   }
 
-  SeekRecord<T> seek(const T& key, Node<T>* auxRoot, Node<T>* root) {
+  SeekRecord<T> seek(const T& key) {
     SeekRecord<T> res{};
     T nodeKey;
     Node<T>* nxt;

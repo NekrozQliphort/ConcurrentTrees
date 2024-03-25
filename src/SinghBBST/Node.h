@@ -11,11 +11,12 @@ struct Node {
   std::atomic<OperationFlaggedPointer>
       op{};  // require uintptr_t as we need last 2 bits for flagging
   int local_height{}, lh{}, rh{};
-  std::atomic<bool> deleted{}, removed{};
+  std::atomic<uint8_t> deleted{};
+  std::atomic<bool> removed{};
 
   explicit Node(T key, Node<T>* left = nullptr, Node<T>* right = nullptr,
                 int local_height = 0, int lh = 0, int rh = 0,
-                bool deleted = false, bool removed = false)
+                uint8_t deleted = 0, bool removed = false)
       : key{key},
         left{left},
         right{right},
