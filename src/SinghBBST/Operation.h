@@ -43,15 +43,16 @@ struct RotateOp {
   constexpr static int UNDECIDED = 0, GRABBED_FIRST = 1, GRABBED_SECOND = 2,
                        ROTATED = 3, DONE = 4;
 
-  std::atomic<Node<T>*> grandchild{nullptr};
+  std::atomic<Node<T>*> grandchild;
   std::atomic<int> state{0};
 
   Node<T>*parent, *node, *child;
   const bool isLeftRotation;  // is it left rotation
   const bool isLeftChild;     // is node the left child of parent
-  RotateOp(Node<T>* parent, Node<T>* node, Node<T>* child, bool isLeftRotation,
-           bool isLeftChild)
-      : parent{parent},
+
+  RotateOp(Node<T>* parent, Node<T>* node, Node<T>* child, bool isLeftRotation, bool isLeftChild, Node<T>* grandchild)
+      : grandchild{grandchild},
+        parent{parent},
         node{node},
         child{child},
         isLeftRotation{isLeftRotation},

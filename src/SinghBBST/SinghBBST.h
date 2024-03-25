@@ -2,12 +2,28 @@
 
 #include <atomic>
 #include <utility>
+#include <thread>
+#include <iostream>
+
 #include "Node.h"
 #include "Operation.h"
 #include "SeekRecord.h"
 
 template <class T, T inf = std::numeric_limits<T>::max()>
 struct SinghBBST {
+  static Node<T>* const sentinel; // For swapping purposes
+
+  SinghBBST() {
+    // Init here to make sure all other fields are initialized
+    maintainenceThread = std::thread(&SinghBBST<T>::maintain, this, root);
+  }
+
+  ~SinghBBST() {
+    finished.store(true);
+    if (maintainenceThread.joinable()) maintainenceThread.join();
+    cleanup(root);
+  }
+
   bool operator[](const T& k) {
     Node<T>*node = root, *nxt = root->left.load();
     OperationFlaggedPointer nodeOp = 0;
@@ -27,8 +43,8 @@ struct SinghBBST {
     }
 
     if (result && node->deleted.load()) {
-      return getFlag(node->op) == OperationConstants::INSERT &&
-             get<InsertOp<T>>(*getPointer<T>(nodeOp)).newNode->key == k;
+      return getFlag(nodeOp) == OperationConstants::INSERT &&
+            get<InsertOp<T>>(*getPointer<T>(nodeOp)).newNode->key == k;
     }
     return result;
   }
@@ -83,8 +99,11 @@ struct SinghBBST {
 
  private:
   Node<T>* root = new Node<T>(T{inf});
+
   static const OperationFlaggedPointer NULLOFP =
       reinterpret_cast<OperationFlaggedPointer>(nullptr);
+  std::atomic<bool> finished {0};
+  std::thread maintainenceThread;
 
   enum class HeightBalanceState {
     NO_ROTATION,  // Height diff <= 1
@@ -134,7 +153,7 @@ struct SinghBBST {
           OperationFlaggedPointer expectedOp = childOp,
                                   desiredOp = flag(
                                       op, OperationConstants::Flags::ROTATE);
-          Node<T>*expectedNode = nullptr,
+          Node<T>*expectedNode = sentinel,
           *desiredNode = rotateOp.isLeftRotation ? child->left.load()
                                                  : child->right.load();
           // Require extra checks as childOp might be None AFTER the rotationOperation is done completely
@@ -156,8 +175,8 @@ struct SinghBBST {
         if (rotateOp.isLeftRotation) {
           Node<T>* newNode = new Node<T>{
               node->key,    node->left.load(), rotateOp.grandchild.load(),
-              node->lh,     node->rh,          node->deleted,
-              node->removed};
+              node->lh,     node->rh,          node->deleted.load(),
+              node->removed.load()};
           newNode->op.store(flag(op, OperationConstants::ROTATE));
           if (!child->left.compare_exchange_strong(expected, newNode))
             delete newNode;  // Only happens successfully once
@@ -166,8 +185,8 @@ struct SinghBBST {
           Node<T>* newNode =
               new Node<T>{node->key,          rotateOp.grandchild.load(),
                           node->right.load(), node->lh,
-                          node->rh,           node->deleted,
-                          node->removed};
+                          node->rh,           node->deleted.load(),
+                          node->removed.load()};
           newNode->op.store(flag(op, OperationConstants::ROTATE));
           if (!child->right.compare_exchange_strong(expected, newNode))
             delete newNode;  // Only happens successfully once
@@ -202,10 +221,10 @@ struct SinghBBST {
     }
   }
 
-  HeightBalanceState checkBalance(Node<T>* node) {
-    if (node->rh - node->lh >= 2)
+  HeightBalanceState checkBalance(Node<T>* node, bool forced) {
+    if (node->rh - node->lh >= 2 - forced)
       return HeightBalanceState::LEFT_ROTATE;
-    else if (node->lh - node->rh >= 2)
+    else if (node->lh - node->rh >= 2 - forced)
       return HeightBalanceState::RIGHT_ROTATE;
     else
       return HeightBalanceState::NO_ROTATION;
@@ -230,15 +249,18 @@ struct SinghBBST {
     if (getFlag(parentOp) == OperationConstants::NONE) {
       Operation<T>* rotationOp =
           new Operation<T>(std::in_place_type<RotateOp<T>>, parent, current,
-                           child, true, isLeftChild);
+                           child, true, isLeftChild, sentinel);
 
       if (parent->op.compare_exchange_strong(
               parentOp, flag(rotationOp, OperationConstants::ROTATE))) {
         helpRotate(rotationOp, parent, current, child);
-      } else
+        return HeightBalanceState::LEFT_ROTATE;
+      } else {
         delete rotationOp;
+        return HeightBalanceState::NO_ROTATION;
+      }
     }
-    return HeightBalanceState::LEFT_ROTATE;
+    return HeightBalanceState::NO_ROTATION;
   }
 
   HeightBalanceState rightRotate(Node<T>* parent, bool isLeftChild,
@@ -260,14 +282,57 @@ struct SinghBBST {
     if (getFlag(parentOp) == OperationConstants::NONE) {
       Operation<T>* rotationOp =
           new Operation<T>(std::in_place_type<RotateOp<T>>, parent, current,
-                           child, false, isLeftChild);
+                           child, false, isLeftChild, sentinel);
       if (parent->op.compare_exchange_strong(
               parentOp, flag(rotationOp, OperationConstants::ROTATE))) {
         helpRotate(rotationOp, parent, current, child);
-      } else
+        return HeightBalanceState::RIGHT_ROTATE;
+      } else {
         delete rotationOp;
+        return HeightBalanceState::NO_ROTATION;
+      }
     }
-    return HeightBalanceState::RIGHT_ROTATE;
+    return HeightBalanceState::NO_ROTATION;
+  }
+
+  void cleanup(Node<T>* node) {
+    if (node == nullptr) return;
+    cleanup(node->left.load());
+    cleanup(node->right.load());
+
+    delete node;
+  }
+
+  int maintainHelper(Node<T>* node, Node<T>* parent, bool isLeftChild, bool forced) {
+    if (node == nullptr) return 0;
+    if (!forced) node->lh = maintainHelper(node->left.load(), node, true, false);
+    if (!forced) node->rh = maintainHelper(node->right.load(), node, false, false);
+    node->local_height = std::max(node->lh, node->rh) + 1;
+
+    HeightBalanceState state = checkBalance(node, forced);
+    if (state == HeightBalanceState::NO_ROTATION) return node->local_height;
+    else if (state == HeightBalanceState::LEFT_ROTATE) {
+      state = leftRotate(parent, isLeftChild, forced);
+      if (state == HeightBalanceState::FORCE_RIGHT_ROTATE) {
+        node->lh = maintainHelper(node->right.load(), node, false, true);
+        leftRotate(parent, isLeftChild, false);
+      }
+    } else {
+      state = rightRotate(parent, isLeftChild, forced);
+      if (state == HeightBalanceState::FORCE_LEFT_ROTATE) {
+        node->rh = maintainHelper(node->left.load(), node, true, true);
+        rightRotate(parent, isLeftChild, false);
+      }
+    }
+
+    if (state != HeightBalanceState::NO_ROTATION) node->local_height--;
+    return node->local_height;
+  }
+
+  void maintain(Node<T>* root) {
+    while (!finished.load()) {
+      maintainHelper(root->left.load(), root, true, false);
+    }
   }
 
   void helpMarked(Operation<T>* parentOp, Node<T>* parent, Node<T>* node) {
@@ -309,7 +374,7 @@ struct SinghBBST {
     } else if (getFlag(parentOp) == OperationConstants::ROTATE) {
       Operation<T>* actualOp = unFlag<T>(parentOp);
       RotateOp<T>& actualRotateOp = get<RotateOp<T>>(*actualOp);
-      helpRotate(actualOp, actualRotateOp.parent, actualRotateOp.child,
+      helpRotate(actualOp, actualRotateOp.parent, actualRotateOp.node,
                  actualRotateOp.child);
     } else if (getFlag(nodeOp) == OperationConstants::MARK) {
       helpMarked(reinterpret_cast<Operation<T>*>(parentOp), parent, node);
@@ -323,14 +388,15 @@ struct SinghBBST {
 
   retry:
     res.result = SeekResultState::NOT_FOUND_L;
-    res.node = auxRoot;
+    res.node = root;
     res.nodeOp = res.node->op.load();
 
-    if (getFlag(res.nodeOp) != OperationConstants::NONE) {
-      if (auxRoot == root) {
-        helpInsert(unFlag<T>(res.nodeOp), res.node);
-        goto retry;
-      }
+    if (getFlag(res.nodeOp) == OperationConstants::INSERT) {
+      helpInsert(unFlag<T>(res.nodeOp), res.node);
+      goto retry;
+    } else if (getFlag(res.nodeOp) == OperationConstants::ROTATE) {
+      help(res.node, res.nodeOp, nullptr, NULLOFP);
+      goto retry;
     }
 
     nxt = res.node->left.load();
@@ -359,5 +425,8 @@ struct SinghBBST {
     return res;
   }
 };
+
+template <class T, T inf>
+inline Node<T>* const SinghBBST<T, inf>::sentinel = new Node<T>(T{inf});
 
 template struct SinghBBST<int>;
