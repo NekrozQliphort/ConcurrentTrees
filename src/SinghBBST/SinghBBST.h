@@ -102,7 +102,7 @@ struct SinghBBST {
 
   static const OperationFlaggedPointer NULLOFP =
       reinterpret_cast<OperationFlaggedPointer>(nullptr);
-  std::atomic<bool> finished {0};
+  std::atomic<bool> finished {false};
   std::thread maintainenceThread;
 
   enum class HeightBalanceState {
@@ -143,6 +143,11 @@ struct SinghBBST {
         OperationFlaggedPointer childOp = child->op.load();
         OperationConstants::Flags currentFlag = getFlag(childOp);
         if (currentFlag == OperationConstants::Flags::ROTATE) {
+          Node<T>* expectedNode = sentinel,
+              *desiredNode = rotateOp.isLeftRotation ? child->left.load()
+                                                     : child->right.load();
+          rotateOp.grandchild.compare_exchange_strong(expectedNode,
+                                                      desiredNode);
           int expected = RotateOp<T>::GRABBED_FIRST,
               desired = RotateOp<T>::GRABBED_SECOND;
           rotateOp.state.compare_exchange_strong(expected, desired);
@@ -153,16 +158,10 @@ struct SinghBBST {
           OperationFlaggedPointer expectedOp = childOp,
                                   desiredOp = flag(
                                       op, OperationConstants::Flags::ROTATE);
-          Node<T>*expectedNode = sentinel,
-          *desiredNode = rotateOp.isLeftRotation ? child->left.load()
-                                                 : child->right.load();
           // Require extra checks as childOp might be None AFTER the rotationOperation is done completely
           // Eg. Interrupted and some other thread finished the rotation then an insertion happens is possible
           if (rotateOp.state.load() != RotateOp<T>::GRABBED_FIRST)
             continue;
-          // This comes first as change to rotate state should not be observed until node is first swapped in
-          rotateOp.grandchild.compare_exchange_strong(expectedNode,
-                                                      desiredNode);
           child->op.compare_exchange_strong(
               expectedOp,
               desiredOp);  // Success means rotateOp has not progressed beyond GRABBED_FIRST

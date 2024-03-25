@@ -1,6 +1,5 @@
 #include <thread>
 #include <vector>
-#include <iostream>
 
 #include "catch.hpp"
 #include "src/SinghBBST/SinghBBST.h"
@@ -16,7 +15,7 @@ DEFINE_CALLER(SinghBBST<int>, maintainHelper)
 void printAll(Node<int>* cur) {
   if (cur == nullptr) return;
   printAll(cur->left.load());
-  if (!cur->deleted.load()) std::cout << cur->key << ' ';
+  if (!cur->deleted.load()) printf("%d ", cur->key);
   printAll(cur->right.load());
 }
 
@@ -50,31 +49,31 @@ TEST_CASE("Singh Deletion sequential check") {
     return;
   }
 
-//  SECTION("2 children deletion") {
-//    constexpr int NUM = 1000;
-//    SinghBBST<int> tree;
-//
-//    const std::function<void(int, int)> balancedInsertFunc =
-//        [&tree, &balancedInsertFunc](int start, int end) {
-//          if (start > end)
-//            return;
-//          int mid = start + (end - start) / 2;
-//          REQUIRE(tree.insert(mid));
-//
-//          balancedInsertFunc(start, mid - 1);
-//          balancedInsertFunc(mid + 1, end);
-//        };
-//
-//    balancedInsertFunc(0, NUM - 1);
-//
-//    for (int i = 0; i < NUM; i++) {
-//      REQUIRE(tree.remove(i));
-//      for (int k = 0; k <= i; k++)
-//        REQUIRE(!tree[k]);
-//      for (int k = i + 1; k < NUM; k++)
-//        REQUIRE(tree[k]);
-//    }
-//  }
+  SECTION("2 children deletion") {
+    constexpr int NUM = 1000;
+    SinghBBST<int> tree;
+
+    const std::function<void(int, int)> balancedInsertFunc =
+        [&tree, &balancedInsertFunc](int start, int end) {
+          if (start > end)
+            return;
+          int mid = start + (end - start) / 2;
+          REQUIRE(tree.insert(mid));
+
+          balancedInsertFunc(start, mid - 1);
+          balancedInsertFunc(mid + 1, end);
+        };
+
+    balancedInsertFunc(0, NUM - 1);
+
+    for (int i = 0; i < NUM; i++) {
+      REQUIRE(tree.remove(i));
+      for (int k = 0; k <= i; k++)
+        REQUIRE(!tree[k]);
+      for (int k = i + 1; k < NUM; k++)
+        REQUIRE(tree[k]);
+    }
+  }
 }
 
 TEST_CASE("Singh Insertion - Insertion Race") {
