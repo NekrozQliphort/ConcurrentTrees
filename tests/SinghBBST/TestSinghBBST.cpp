@@ -1,5 +1,6 @@
 #include <thread>
 #include <vector>
+#include <semaphore>
 
 #include "catch.hpp"
 #include "src/SinghBBST/SinghBBST.h"
@@ -66,6 +67,35 @@ TEST_CASE("Singh Deletion sequential check") {
       for (int k = i + 1; k < NUM; k++)
         REQUIRE(tree[k]);
     }
+  }
+}
+
+TEST_CASE("Singh Linearizability Sanity Check") {
+  constexpr int NUM_ITER = 1000, NUM_INSERTION = 100;
+  std::vector<bool> arr;
+
+  for (int i = 0; i < NUM_ITER; i++) {
+    SinghBBST<int> tree;
+    std::counting_semaphore<2> sem{0};
+
+    std::thread t1{[&]() {
+      sem.acquire();
+      for (int i = 0; i < NUM_INSERTION; i++) tree.insert(i);
+    }};
+
+    std::thread t2{[&]() {
+      sem.acquire();
+      for (int i = 0; i < NUM_INSERTION; i++) arr.emplace_back(!tree.remove(i));
+    }};
+
+    sem.release(2);
+    t1.join();
+    t2.join();
+
+    for (int i = 0; i < NUM_INSERTION; i++) {
+      REQUIRE(tree.remove(i) == arr[i]);
+    }
+    arr.clear();
   }
 }
 
