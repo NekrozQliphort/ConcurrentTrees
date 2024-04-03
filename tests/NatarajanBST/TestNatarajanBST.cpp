@@ -59,7 +59,7 @@ TEST_CASE("Natarajan Deletion sequential check") {
 }
 
 TEST_CASE("Natarajan Linearizability Sanity Check") {
-  constexpr int NUM_ITER = 1000, NUM_INSERTION = 100;
+  constexpr int NUM_ITER = 10000, NUM_INSERTION = 100;
   std::vector<bool> arr;
 
   for (int i = 0; i < NUM_ITER; i++) {
@@ -81,7 +81,7 @@ TEST_CASE("Natarajan Linearizability Sanity Check") {
     t2.join();
 
     for (int i = 0; i < NUM_INSERTION; i++) {
-      REQUIRE(tree.remove(i) == arr[i]);
+      REQUIRE(tree[i] == arr[i]);
     }
     arr.clear();
   }
