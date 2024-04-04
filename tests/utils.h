@@ -27,13 +27,14 @@ struct AccessPrivateVars {
   auto call_##class_private_func(qualified_class_name& obj, Args&&... args); \
   }
 
-#define DEFINE_ACCESSOR(qualified_class_name, class_data_member)                   \
-  namespace PrivateAccess {                                                        \
-  template <>                                                                      \
-  struct AccessPrivateVars<&qualified_class_name::class_data_member>::Delegate {   \
-    friend auto &get_##class_data_member(qualified_class_name &obj) {              \
-      return obj.*kMemPtr;                                                         \
-    }                                                                              \
-  };                                                                               \
-  auto &get_##class_data_member(qualified_class_name &obj);                        \
+#define DEFINE_ACCESSOR(qualified_class_name, class_data_member)      \
+  namespace PrivateAccess {                                           \
+  template <>                                                         \
+  struct AccessPrivateVars<                                           \
+      &qualified_class_name::class_data_member>::Delegate {           \
+    friend auto& get_##class_data_member(qualified_class_name& obj) { \
+      return obj.*kMemPtr;                                            \
+    }                                                                 \
+  };                                                                  \
+  auto& get_##class_data_member(qualified_class_name& obj);           \
   }

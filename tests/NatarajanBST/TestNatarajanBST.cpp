@@ -1,6 +1,6 @@
+#include <semaphore>
 #include <thread>
 #include <vector>
-#include <semaphore>
 
 #include "catch.hpp"
 #include "src/NatarajanBST/NatarajanBST.h"
@@ -68,12 +68,14 @@ TEST_CASE("Natarajan Linearizability Sanity Check") {
 
     std::thread t1{[&]() {
       sem.acquire();
-      for (int i = 0; i < NUM_INSERTION; i++) tree.insert(i);
+      for (int i = 0; i < NUM_INSERTION; i++)
+        tree.insert(i);
     }};
 
     std::thread t2{[&]() {
       sem.acquire();
-      for (int i = 0; i < NUM_INSERTION; i++) arr.emplace_back(!tree.remove(i));
+      for (int i = 0; i < NUM_INSERTION; i++)
+        arr.emplace_back(!tree.remove(i));
     }};
 
     sem.release(2);

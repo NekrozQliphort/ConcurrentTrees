@@ -8,7 +8,7 @@ option(WITH_TSAN "Build tests and benchmarks with ThreadSanitizer" OFF)
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -Wall -O2 -fsanitize=thread")
+set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -Wall -O2")
 
 FetchContent_Declare(
         googletest
@@ -40,5 +40,5 @@ endforeach( benchmarkfile ${BENCHMARK_FILES} )
 
 if(WITH_TSAN AND NOT MSVC)
     MESSAGE(STATUS "Compiling with thread sanitizer")
-    string(APPEND CMAKE_CXX_FLAGS " -fsanitize=thread")
+    string(APPEND CMAKE_CXX_FLAGS " -fsanitize=thread -pie -fPIE")
 endif()
