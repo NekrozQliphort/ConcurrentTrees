@@ -10,7 +10,7 @@
 
 constexpr int TOTAL_ELEMS = 2097152;
 constexpr int MIN_THREADS = 2;
-constexpr int MAX_THREADS = 8;
+constexpr int MAX_THREADS = 64;
 
 void createBalancedInsertion(std::vector<int>& container, int start, int end) {
   if (start > end)
