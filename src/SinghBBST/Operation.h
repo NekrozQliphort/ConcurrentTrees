@@ -50,7 +50,8 @@ struct RotateOp {
   const bool isLeftRotation;  // is it left rotation
   const bool isLeftChild;     // is node the left child of parent
 
-  RotateOp(Node<T>* parent, Node<T>* node, Node<T>* child, bool isLeftRotation, bool isLeftChild, Node<T>* grandchild)
+  RotateOp(Node<T>* parent, Node<T>* node, Node<T>* child, bool isLeftRotation,
+           bool isLeftChild, Node<T>* grandchild)
       : grandchild{grandchild},
         parent{parent},
         node{node},

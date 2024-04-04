@@ -1,9 +1,9 @@
 #pragma once
 
 #include <atomic>
-#include <utility>
-#include <thread>
 #include <iostream>
+#include <thread>
+#include <utility>
 
 #include "Node.h"
 #include "Operation.h"
@@ -11,7 +11,7 @@
 
 template <class T, T inf = std::numeric_limits<T>::max()>
 struct SinghBBST {
-  static Node<T>* const sentinel; // For swapping purposes
+  static Node<T>* const sentinel;  // For swapping purposes
 
   SinghBBST() {
     // Init here to make sure all other fields are initialized
@@ -20,7 +20,8 @@ struct SinghBBST {
 
   ~SinghBBST() {
     finished.store(true);
-    if (maintainenceThread.joinable()) maintainenceThread.join();
+    if (maintainenceThread.joinable())
+      maintainenceThread.join();
     cleanup(root);
   }
 
@@ -44,7 +45,7 @@ struct SinghBBST {
 
     if (result && (node->deleted.load() & 1) == 1) {
       return getFlag(nodeOp) == OperationConstants::INSERT &&
-            get<InsertOp<T>>(*getPointer<T>(nodeOp)).newNode->key == k;
+             get<InsertOp<T>>(*getPointer<T>(nodeOp)).newNode->key == k;
     }
     return result;
   }
@@ -66,7 +67,8 @@ struct SinghBBST {
       Operation<T>* casOp =
           new Operation<T>(std::in_place_type<InsertOp<T>>, isLeft,
                            result.result == SeekResultState::FOUND &&
-                               (result.node->deleted.load() & 1) == 1, // TODO: Might need another fix
+                               (result.node->deleted.load() & 1) ==
+                                   1,  // TODO: Might need another fix
                            old, newNode);
       if (result.node->op.compare_exchange_strong(
               result.nodeOp, flag(casOp, OperationConstants::INSERT))) {
@@ -102,7 +104,7 @@ struct SinghBBST {
 
   static const OperationFlaggedPointer NULLOFP =
       reinterpret_cast<OperationFlaggedPointer>(nullptr);
-  std::atomic<bool> finished {false};
+  std::atomic<bool> finished{false};
   std::thread maintainenceThread;
 
   enum class HeightBalanceState {
@@ -143,9 +145,9 @@ struct SinghBBST {
         OperationFlaggedPointer childOp = child->op.load();
         OperationConstants::Flags currentFlag = getFlag(childOp);
         if (currentFlag == OperationConstants::Flags::ROTATE) {
-          Node<T>* expectedNode = sentinel,
-              *desiredNode = rotateOp.isLeftRotation ? child->left.load()
-                                                     : child->right.load();
+          Node<T>*expectedNode = sentinel,
+          *desiredNode = rotateOp.isLeftRotation ? child->left.load()
+                                                 : child->right.load();
           rotateOp.grandchild.compare_exchange_strong(expectedNode,
                                                       desiredNode);
           int expected = RotateOp<T>::GRABBED_FIRST,
@@ -173,21 +175,24 @@ struct SinghBBST {
         Node<T>* expected = rotateOp.grandchild.load();
         Node<T>* newNode;
         if (rotateOp.isLeftRotation) {
-          uint8_t deleted = node->deleted.fetch_or(2) & 1u; // Make sure it's unusable for remove
+          uint8_t deleted = node->deleted.fetch_or(2) &
+                            1u;  // Make sure it's unusable for remove
           newNode = new Node<T>{
-              node->key,    node->left.load(), rotateOp.grandchild.load(),
-              node->local_height, node->lh,     node->rh,          deleted,
-              node->removed.load()};
+              node->key, node->left.load(), rotateOp.grandchild.load(), 0, 0,
+              0,         deleted,           node->removed.load()};
           newNode->op.store(flag(op, OperationConstants::ROTATE));
           if (!child->left.compare_exchange_strong(expected, newNode))
             delete newNode;  // Only happens successfully once
         } else {
           uint8_t deleted = node->deleted.fetch_or(2) & 1u;
-          newNode =
-              new Node<T>{node->key,          rotateOp.grandchild.load(),
-                          node->right.load(), node->local_height, node->lh,
-                          node->rh,           deleted,
-                          node->removed.load()};
+          newNode = new Node<T>{node->key,
+                                rotateOp.grandchild.load(),
+                                node->right.load(),
+                                0,
+                                0,
+                                0,
+                                deleted,
+                                node->removed.load()};
           newNode->op.store(flag(op, OperationConstants::ROTATE));
           if (!child->right.compare_exchange_strong(expected, newNode))
             delete newNode;  // Only happens successfully once
@@ -297,21 +302,27 @@ struct SinghBBST {
   }
 
   void cleanup(Node<T>* node) {
-    if (node == nullptr) return;
+    if (node == nullptr)
+      return;
     cleanup(node->left.load());
     cleanup(node->right.load());
 
     delete node;
   }
 
-  int maintainHelper(Node<T>* node, Node<T>* parent, bool isLeftChild, bool forced) {
-    if (node == nullptr) return 0;
-    if (!forced) node->lh = maintainHelper(node->left.load(), node, true, false);
-    if (!forced) node->rh = maintainHelper(node->right.load(), node, false, false);
+  int maintainHelper(Node<T>* node, Node<T>* parent, bool isLeftChild,
+                     bool forced) {
+    if (node == nullptr)
+      return 0;
+    if (!forced)
+      node->lh = maintainHelper(node->left.load(), node, true, false);
+    if (!forced)
+      node->rh = maintainHelper(node->right.load(), node, false, false);
     node->local_height = std::max(node->lh, node->rh) + 1;
 
     HeightBalanceState state = checkBalance(node, forced);
-    if (state == HeightBalanceState::NO_ROTATION) return node->local_height;
+    if (state == HeightBalanceState::NO_ROTATION)
+      return node->local_height;
     else if (state == HeightBalanceState::LEFT_ROTATE) {
       state = leftRotate(parent, isLeftChild, forced);
       if (state == HeightBalanceState::FORCE_RIGHT_ROTATE) {
@@ -326,7 +337,8 @@ struct SinghBBST {
       }
     }
 
-    if (state != HeightBalanceState::NO_ROTATION) node->local_height--;
+    if (state != HeightBalanceState::NO_ROTATION)
+      node->local_height--;
     return node->local_height;
   }
 
