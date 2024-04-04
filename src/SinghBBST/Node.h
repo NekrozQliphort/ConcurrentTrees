@@ -4,6 +4,7 @@
 
 #include "Operation.h"
 
+namespace Singh {
 template <class T>
 struct Node {
   T key;
@@ -43,3 +44,4 @@ OperationFlaggedPointer flag(Operation<T>* op,
                              OperationConstants::Flags flags) {
   return reinterpret_cast<OperationFlaggedPointer>(op) | flags;
 }
+}  // namespace Singh

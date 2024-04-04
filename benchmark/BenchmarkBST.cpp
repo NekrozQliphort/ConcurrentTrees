@@ -1,13 +1,16 @@
 #include <benchmark/benchmark.h>
 
 #include <vector>
+
+#include "src/CGLBBST/CGLBBST.h"
 #include "src/CoarseGrainedLockingBST/CGLBST.h"
 #include "src/FineGrainedLockingBST/FGLBST.h"
 #include "src/NatarajanBST/NatarajanBST.h"
+#include "src/SinghBBST/SinghBBST.h"
 
 constexpr int TOTAL_ELEMS = 2097152;
 constexpr int MIN_THREADS = 2;
-constexpr int MAX_THREADS = 128;
+constexpr int MAX_THREADS = 64;
 
 void createBalancedInsertion(std::vector<int>& container, int start, int end) {
   if (start > end)
@@ -95,22 +98,51 @@ static void BM_WRITE_INTENSIVE(benchmark::State& state) {
 }
 
 BENCHMARK(BM_READ_INTENSIVE<NatarajanBST<int>>)
+    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_READ_INTENSIVE<FGLBST<int>>)
+    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_READ_INTENSIVE<CGLBST<int>>)
+    ->UseRealTime()
+    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_INTENSIVE<CGLBBST<int>>)
+    ->UseRealTime()
+    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_INTENSIVE<SinghBBST<int>>)
+    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 
 BENCHMARK(BM_WRITE_INTENSIVE<NatarajanBST<int>>)
+    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_WRITE_INTENSIVE<FGLBST<int>>)
+    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_WRITE_INTENSIVE<CGLBST<int>>)
+    ->UseRealTime()
+    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_WRITE_INTENSIVE<CGLBBST<int>>)
+    ->UseRealTime()
+    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_WRITE_INTENSIVE<SinghBBST<int>>)
+    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 
 BENCHMARK(BM_READ_WRITE<NatarajanBST<int>>)
+    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_WRITE<FGLBST<int>>)->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_WRITE<CGLBST<int>>)->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<FGLBST<int>>)
+    ->UseRealTime()
+    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<CGLBST<int>>)
+    ->UseRealTime()
+    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<CGLBBST<int>>)
+    ->UseRealTime()
+    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<SinghBBST<int>>)
+    ->UseRealTime()
+    ->ThreadRange(MIN_THREADS, MAX_THREADS);
 
 BENCHMARK_MAIN();

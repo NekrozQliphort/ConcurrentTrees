@@ -15,8 +15,10 @@ struct InsertOp;
 template <typename T>
 struct RotateOp;
 
+namespace Singh {
 template <typename T>
 struct Node;
+}
 
 template <typename T>
 using Operation = std::variant<InsertOp<T>, RotateOp<T>>;
@@ -27,11 +29,12 @@ template <typename T>
 struct InsertOp {
   bool isLeft;
   bool isUpdate{false};
-  Node<T>* expectedNode;
-  Node<T>* newNode;
-  InsertOp(bool isLeft, Node<T>* expectedNode, Node<T>* newNode)
+  Singh::Node<T>* expectedNode;
+  Singh::Node<T>* newNode;
+  InsertOp(bool isLeft, Singh::Node<T>* expectedNode, Singh::Node<T>* newNode)
       : InsertOp{isLeft, false, expectedNode, newNode} {}
-  InsertOp(bool isLeft, bool isUpdate, Node<T>* expectedNode, Node<T>* newNode)
+  InsertOp(bool isLeft, bool isUpdate, Singh::Node<T>* expectedNode,
+           Singh::Node<T>* newNode)
       : isLeft{isLeft},
         isUpdate{isUpdate},
         expectedNode{expectedNode},
@@ -43,15 +46,15 @@ struct RotateOp {
   constexpr static int UNDECIDED = 0, GRABBED_FIRST = 1, GRABBED_SECOND = 2,
                        ROTATED = 3, DONE = 4;
 
-  std::atomic<Node<T>*> grandchild;
+  std::atomic<Singh::Node<T>*> grandchild;
   std::atomic<int> state{0};
 
-  Node<T>*parent, *node, *child;
+  Singh::Node<T>*parent, *node, *child;
   const bool isLeftRotation;  // is it left rotation
   const bool isLeftChild;     // is node the left child of parent
 
-  RotateOp(Node<T>* parent, Node<T>* node, Node<T>* child, bool isLeftRotation,
-           bool isLeftChild, Node<T>* grandchild)
+  RotateOp(Singh::Node<T>* parent, Singh::Node<T>* node, Singh::Node<T>* child,
+           bool isLeftRotation, bool isLeftChild, Singh::Node<T>* grandchild)
       : grandchild{grandchild},
         parent{parent},
         node{node},

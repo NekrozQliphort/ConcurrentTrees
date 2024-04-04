@@ -5,13 +5,13 @@
 #include <thread>
 #include <utility>
 
-#include "Node.h"
-#include "Operation.h"
-#include "SeekRecord.h"
+#include "src/SinghBBST/Node.h"
+#include "src/SinghBBST/Operation.h"
+#include "src/SinghBBST/SeekRecord.h"
 
 template <class T, T inf = std::numeric_limits<T>::max()>
 struct SinghBBST {
-  static Node<T>* const sentinel;  // For swapping purposes
+  static Singh::Node<T>* const sentinel;  // For swapping purposes
 
   SinghBBST() {
     // Init here to make sure all other fields are initialized
@@ -26,7 +26,7 @@ struct SinghBBST {
   }
 
   bool operator[](const T& k) {
-    Node<T>*node = root, *nxt = root->left.load();
+    Singh::Node<T>*node = root, *nxt = root->left.load();
     OperationFlaggedPointer nodeOp = 0;
     T nodeKey;
     bool result = false;
@@ -45,23 +45,23 @@ struct SinghBBST {
 
     if (result && (node->deleted.load() & 1) == 1) {
       return getFlag(nodeOp) == OperationConstants::INSERT &&
-             get<InsertOp<T>>(*getPointer<T>(nodeOp)).newNode->key == k;
+             get<InsertOp<T>>(*Singh::getPointer<T>(nodeOp)).newNode->key == k;
     }
     return result;
   }
 
   bool insert(const T& key) {
-    Node<T>* newNode{nullptr};
+    Singh::Node<T>* newNode{nullptr};
     while (true) {
-      SeekRecord<T> result = seek(key);
+      Singh::SeekRecord<T> result = seek(key);
       if (result.result == SeekResultState::FOUND &&
           (result.node->deleted.load() & 1) == 0)
         return false;
       if (newNode == nullptr)
-        newNode = new Node<T>(key);
+        newNode = new Singh::Node<T>(key);
 
       bool isLeft = (result.result == SeekResultState::NOT_FOUND_L);
-      Node<T>* old =
+      Singh::Node<T>* old =
           isLeft ? result.node->left.load() : result.node->right.load();
 
       Operation<T>* casOp =
@@ -71,7 +71,7 @@ struct SinghBBST {
                                    1,  // TODO: Might need another fix
                            old, newNode);
       if (result.node->op.compare_exchange_strong(
-              result.nodeOp, flag(casOp, OperationConstants::INSERT))) {
+              result.nodeOp, Singh::flag(casOp, OperationConstants::INSERT))) {
         helpInsert(casOp, result.node);
         return true;
       }
@@ -82,7 +82,7 @@ struct SinghBBST {
 
   bool remove(const T& key) {
     while (true) {
-      SeekRecord<T> result = seek(key);
+      Singh::SeekRecord<T> result = seek(key);
       if (result.result != SeekResultState::FOUND)
         return false;
       if ((result.node->deleted.load() & 1) == 1) {
@@ -100,7 +100,7 @@ struct SinghBBST {
   }
 
  private:
-  Node<T>* root = new Node<T>(T{inf});
+  Singh::Node<T>* root = new Singh::Node<T>(T{inf});
 
   static const OperationFlaggedPointer NULLOFP =
       reinterpret_cast<OperationFlaggedPointer>(nullptr);
@@ -115,8 +115,8 @@ struct SinghBBST {
     FORCE_RIGHT_ROTATE,
   };
 
-  void helpRotate(Operation<T>* op, Node<T>* parent, Node<T>* node,
-                  Node<T>* child) {
+  void helpRotate(Operation<T>* op, Singh::Node<T>* parent,
+                  Singh::Node<T>* node, Singh::Node<T>* child) {
     RotateOp<T>& rotateOp = get<RotateOp<T>>(*op);
 
     for (int seen_state = rotateOp.state.load();
@@ -133,7 +133,7 @@ struct SinghBBST {
                nodeOp);  // First 2 arguments don't matter for insert
         } else if (currentFlag == OperationConstants::NONE) {
           OperationFlaggedPointer expected = nodeOp,
-                                  desired = flag(
+                                  desired = Singh::flag(
                                       op, OperationConstants::Flags::ROTATE);
           // No need extra checks whether it is decided or not, can only happen once (node never gets set back to NONE)
           node->op.compare_exchange_strong(expected, desired);
@@ -145,7 +145,7 @@ struct SinghBBST {
         OperationFlaggedPointer childOp = child->op.load();
         OperationConstants::Flags currentFlag = getFlag(childOp);
         if (currentFlag == OperationConstants::Flags::ROTATE) {
-          Node<T>*expectedNode = sentinel,
+          Singh::Node<T>*expectedNode = sentinel,
           *desiredNode = rotateOp.isLeftRotation ? child->left.load()
                                                  : child->right.load();
           rotateOp.grandchild.compare_exchange_strong(expectedNode,
@@ -158,7 +158,7 @@ struct SinghBBST {
                childOp);  // First 2 arguments don't matter for insert
         } else if (currentFlag == OperationConstants::NONE) {
           OperationFlaggedPointer expectedOp = childOp,
-                                  desiredOp = flag(
+                                  desiredOp = Singh::flag(
                                       op, OperationConstants::Flags::ROTATE);
           // Require extra checks as childOp might be None AFTER the rotationOperation is done completely
           // Eg. Interrupted and some other thread finished the rotation then an insertion happens is possible
@@ -172,34 +172,35 @@ struct SinghBBST {
 
       } else if (seen_state == RotateOp<T>::GRABBED_SECOND) {
         // Create correct node to prepare for insertion and CAS newNode
-        Node<T>* expected = rotateOp.grandchild.load();
-        Node<T>* newNode;
+        Singh::Node<T>* expected = rotateOp.grandchild.load();
+        Singh::Node<T>* newNode;
         if (rotateOp.isLeftRotation) {
           uint8_t deleted = node->deleted.fetch_or(2) &
                             1u;  // Make sure it's unusable for remove
-          newNode = new Node<T>{
+          newNode = new Singh::Node<T>{
               node->key, node->left.load(), rotateOp.grandchild.load(), 0, 0,
               0,         deleted,           node->removed.load()};
-          newNode->op.store(flag(op, OperationConstants::ROTATE));
+          newNode->op.store(Singh::flag(op, OperationConstants::ROTATE));
           if (!child->left.compare_exchange_strong(expected, newNode))
             delete newNode;  // Only happens successfully once
         } else {
           uint8_t deleted = node->deleted.fetch_or(2) & 1u;
-          newNode = new Node<T>{node->key,
-                                rotateOp.grandchild.load(),
-                                node->right.load(),
-                                0,
-                                0,
-                                0,
-                                deleted,
-                                node->removed.load()};
-          newNode->op.store(flag(op, OperationConstants::ROTATE));
+          newNode = new Singh::Node<T>{node->key,
+                                       rotateOp.grandchild.load(),
+                                       node->right.load(),
+                                       0,
+                                       0,
+                                       0,
+                                       deleted,
+                                       node->removed.load()};
+          newNode->op.store(Singh::flag(op, OperationConstants::ROTATE));
           if (!child->right.compare_exchange_strong(expected, newNode))
             delete newNode;  // Only happens successfully once
         }
 
         // Final CAS for parent to swap to correct node
-        if (Node<T>* expected = node, *desired = child; rotateOp.isLeftChild) {
+        if (Singh::Node<T>* expected = node, *desired = child;
+            rotateOp.isLeftChild) {
           parent->left.compare_exchange_strong(expected, desired);
         } else {
           parent->right.compare_exchange_strong(expected, desired);
@@ -210,15 +211,15 @@ struct SinghBBST {
         rotateOp.state.compare_exchange_strong(expectedState, desiredState);
       } else if (seen_state == RotateOp<T>::ROTATED) {
         OperationFlaggedPointer expected,
-            desired = flag(op, OperationConstants::NONE);
+            desired = Singh::flag(op, OperationConstants::NONE);
         parent->op.compare_exchange_strong(
-            expected = flag(op, OperationConstants::ROTATE), desired);
+            expected = Singh::flag(op, OperationConstants::ROTATE), desired);
         child->op.compare_exchange_strong(
-            expected = flag(op, OperationConstants::ROTATE), desired);
-        Node<T>* newNode =
+            expected = Singh::flag(op, OperationConstants::ROTATE), desired);
+        Singh::Node<T>* newNode =
             rotateOp.isLeftRotation ? child->left.load() : child->right.load();
         newNode->op.compare_exchange_strong(
-            expected = flag(op, OperationConstants::ROTATE), desired);
+            expected = Singh::flag(op, OperationConstants::ROTATE), desired);
 
         int expectedState = RotateOp<T>::ROTATED,
             desiredState = RotateOp<T>::DONE;
@@ -227,7 +228,7 @@ struct SinghBBST {
     }
   }
 
-  HeightBalanceState checkBalance(Node<T>* node, bool forced) {
+  HeightBalanceState checkBalance(Singh::Node<T>* node, bool forced) {
     if (node->rh - node->lh >= 2 - forced)
       return HeightBalanceState::LEFT_ROTATE;
     else if (node->lh - node->rh >= 2 - forced)
@@ -236,13 +237,14 @@ struct SinghBBST {
       return HeightBalanceState::NO_ROTATION;
   }
 
-  HeightBalanceState leftRotate(Node<T>* parent, bool isLeftChild,
+  HeightBalanceState leftRotate(Singh::Node<T>* parent, bool isLeftChild,
                                 bool forced) {
     // Assumption: Only called when it is already confirmed to be imbalanced
     if (parent->removed.load())
       return HeightBalanceState::NO_ROTATION;
 
-    Node<T>*current = isLeftChild ? parent->left.load() : parent->right.load(),
+    Singh::Node<T>*current =
+        isLeftChild ? parent->left.load() : parent->right.load(),
     *child = nullptr;
     if (current == nullptr || (child = current->right.load()) == nullptr)
       return HeightBalanceState::NO_ROTATION;
@@ -258,7 +260,7 @@ struct SinghBBST {
                            child, true, isLeftChild, sentinel);
 
       if (parent->op.compare_exchange_strong(
-              parentOp, flag(rotationOp, OperationConstants::ROTATE))) {
+              parentOp, Singh::flag(rotationOp, OperationConstants::ROTATE))) {
         helpRotate(rotationOp, parent, current, child);
         return HeightBalanceState::LEFT_ROTATE;
       } else {
@@ -269,13 +271,14 @@ struct SinghBBST {
     return HeightBalanceState::NO_ROTATION;
   }
 
-  HeightBalanceState rightRotate(Node<T>* parent, bool isLeftChild,
+  HeightBalanceState rightRotate(Singh::Node<T>* parent, bool isLeftChild,
                                  bool forced) {
     // Assumption: Only called when it is already confirmed to be imbalanced
     if (parent->removed.load())
       return HeightBalanceState::NO_ROTATION;
 
-    Node<T>*current = isLeftChild ? parent->left.load() : parent->right.load(),
+    Singh::Node<T>*current =
+        isLeftChild ? parent->left.load() : parent->right.load(),
     *child = nullptr;
     if (current == nullptr || (child = current->left.load()) == nullptr)
       return HeightBalanceState::NO_ROTATION;
@@ -290,7 +293,7 @@ struct SinghBBST {
           new Operation<T>(std::in_place_type<RotateOp<T>>, parent, current,
                            child, false, isLeftChild, sentinel);
       if (parent->op.compare_exchange_strong(
-              parentOp, flag(rotationOp, OperationConstants::ROTATE))) {
+              parentOp, Singh::flag(rotationOp, OperationConstants::ROTATE))) {
         helpRotate(rotationOp, parent, current, child);
         return HeightBalanceState::RIGHT_ROTATE;
       } else {
@@ -301,7 +304,7 @@ struct SinghBBST {
     return HeightBalanceState::NO_ROTATION;
   }
 
-  void cleanup(Node<T>* node) {
+  void cleanup(Singh::Node<T>* node) {
     if (node == nullptr)
       return;
     cleanup(node->left.load());
@@ -310,8 +313,8 @@ struct SinghBBST {
     delete node;
   }
 
-  int maintainHelper(Node<T>* node, Node<T>* parent, bool isLeftChild,
-                     bool forced) {
+  int maintainHelper(Singh::Node<T>* node, Singh::Node<T>* parent,
+                     bool isLeftChild, bool forced) {
     if (node == nullptr)
       return 0;
     if (!forced)
@@ -342,14 +345,15 @@ struct SinghBBST {
     return node->local_height;
   }
 
-  void maintain(Node<T>* root) {
+  void maintain(Singh::Node<T>* root) {
     while (!finished.load()) {
       maintainHelper(root->left.load(), root, true, false);
     }
   }
 
-  void helpMarked(Operation<T>* parentOp, Node<T>* parent, Node<T>* node) {
-    Node<T>* child = node->left.load();
+  void helpMarked(Operation<T>* parentOp, Singh::Node<T>* parent,
+                  Singh::Node<T>* node) {
+    Singh::Node<T>* child = node->left.load();
     if (child == nullptr)
       node->right.load();
 
@@ -359,12 +363,12 @@ struct SinghBBST {
     OperationFlaggedPointer expected =
         reinterpret_cast<OperationFlaggedPointer>(parentOp);
     if (parent->op.compare_exchange_strong(
-            expected, flag(casOp, OperationConstants::INSERT))) {
+            expected, Singh::flag(casOp, OperationConstants::INSERT))) {
       helpInsert(casOp, parent);
     }
   }
 
-  void helpInsert(Operation<T>* op, Node<T>* dest) {
+  void helpInsert(Operation<T>* op, Singh::Node<T>* dest) {
     // TODO: Assumed op to be unflagged
     InsertOp<T>& insertOp = get<InsertOp<T>>(*op);
     if (insertOp.isUpdate) {
@@ -372,21 +376,23 @@ struct SinghBBST {
       // Should not encounter 2/3
       dest->deleted.compare_exchange_strong(expected, desired);
     } else {
-      std::atomic<Node<T>*>& addr = insertOp.isLeft ? dest->left : dest->right;
+      std::atomic<Singh::Node<T>*>& addr =
+          insertOp.isLeft ? dest->left : dest->right;
       addr.compare_exchange_strong(insertOp.expectedNode, insertOp.newNode);
     }
 
-    OperationFlaggedPointer expected = flag(op, OperationConstants::INSERT),
-                            desired = flag(op, OperationConstants::NONE);
+    OperationFlaggedPointer expected =
+                                Singh::flag(op, OperationConstants::INSERT),
+                            desired = Singh::flag(op, OperationConstants::NONE);
     dest->op.compare_exchange_strong(expected, desired);
   }
 
-  void help(Node<T>* parent, OperationFlaggedPointer parentOp, Node<T>* node,
-            OperationFlaggedPointer nodeOp) {
+  void help(Singh::Node<T>* parent, OperationFlaggedPointer parentOp,
+            Singh::Node<T>* node, OperationFlaggedPointer nodeOp) {
     if (getFlag(nodeOp) == OperationConstants::INSERT) {
-      helpInsert(unFlag<T>(nodeOp), node);
+      helpInsert(Singh::unFlag<T>(nodeOp), node);
     } else if (getFlag(parentOp) == OperationConstants::ROTATE) {
-      Operation<T>* actualOp = unFlag<T>(parentOp);
+      Operation<T>* actualOp = Singh::unFlag<T>(parentOp);
       RotateOp<T>& actualRotateOp = get<RotateOp<T>>(*actualOp);
       helpRotate(actualOp, actualRotateOp.parent, actualRotateOp.node,
                  actualRotateOp.child);
@@ -395,10 +401,10 @@ struct SinghBBST {
     }
   }
 
-  SeekRecord<T> seek(const T& key) {
-    SeekRecord<T> res{};
+  Singh::SeekRecord<T> seek(const T& key) {
+    Singh::SeekRecord<T> res{};
     T nodeKey;
-    Node<T>* nxt;
+    Singh::Node<T>* nxt;
 
   retry:
     res.result = SeekResultState::NOT_FOUND_L;
@@ -406,7 +412,7 @@ struct SinghBBST {
     res.nodeOp = res.node->op.load();
 
     if (getFlag(res.nodeOp) == OperationConstants::INSERT) {
-      helpInsert(unFlag<T>(res.nodeOp), res.node);
+      helpInsert(Singh::unFlag<T>(res.nodeOp), res.node);
       goto retry;
     } else if (getFlag(res.nodeOp) == OperationConstants::ROTATE) {
       help(res.node, res.nodeOp, nullptr, NULLOFP);
@@ -441,6 +447,7 @@ struct SinghBBST {
 };
 
 template <class T, T inf>
-inline Node<T>* const SinghBBST<T, inf>::sentinel = new Node<T>(T{inf});
+inline Singh::Node<T>* const SinghBBST<T, inf>::sentinel =
+    new Singh::Node<T>(T{inf});
 
 template struct SinghBBST<int>;

@@ -235,8 +235,8 @@ TEST_CASE("Singh helpRotate Sanity Check") {
     for (int i = 0; i < 6; i++)
       tree.insert(toInsert[i]);
 
-    Node<int>* root = PrivateAccess::get_root(tree);
-    Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
+    Singh::Node<int>* root = PrivateAccess::get_root(tree);
+    Singh::Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
 
     node6 = root->left.load();
     node2 = node6->left.load();
@@ -259,7 +259,7 @@ TEST_CASE("Singh helpRotate Sanity Check") {
     Operation<int>* rotationOp =
         new Operation<int>(std::in_place_type<RotateOp<int>>, node6, node2,
                            node4, true, true, SinghBBST<int>::sentinel);
-    node3->op.store(flag(rotationOp, OperationConstants::Flags::ROTATE));
+    node3->op.store(Singh::flag(rotationOp, OperationConstants::Flags::ROTATE));
     PrivateAccess::call_helpRotate(tree, rotationOp, node6, node2, node4);
 
     // Check Structure
@@ -286,8 +286,8 @@ TEST_CASE("Singh helpRotate Sanity Check") {
     for (int i = 0; i < 6; i++)
       tree.insert(toInsert[i]);
 
-    Node<int>* root = PrivateAccess::get_root(tree);
-    Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
+    Singh::Node<int>* root = PrivateAccess::get_root(tree);
+    Singh::Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
 
     node1 = root->left.load();
     node3 = node1->right.load();
@@ -310,7 +310,7 @@ TEST_CASE("Singh helpRotate Sanity Check") {
     Operation<int>* rotationOp =
         new Operation<int>(std::in_place_type<RotateOp<int>>, node1, node3,
                            node5, true, false, SinghBBST<int>::sentinel);
-    node3->op.store(flag(rotationOp, OperationConstants::Flags::ROTATE));
+    node3->op.store(Singh::flag(rotationOp, OperationConstants::Flags::ROTATE));
     PrivateAccess::call_helpRotate(tree, rotationOp, node1, node3, node5);
 
     // Check Structure
@@ -338,8 +338,8 @@ TEST_CASE("Singh helpRotate Sanity Check") {
     for (int i = 0; i < 6; i++)
       tree.insert(toInsert[i]);
 
-    Node<int>* root = PrivateAccess::get_root(tree);
-    Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
+    Singh::Node<int>* root = PrivateAccess::get_root(tree);
+    Singh::Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
 
     node6 = root->left.load();
     node4 = node6->left.load();
@@ -362,7 +362,7 @@ TEST_CASE("Singh helpRotate Sanity Check") {
     Operation<int>* rotationOp =
         new Operation<int>(std::in_place_type<RotateOp<int>>, node6, node4,
                            node2, false, true, SinghBBST<int>::sentinel);
-    node3->op.store(flag(rotationOp, OperationConstants::Flags::ROTATE));
+    node3->op.store(Singh::flag(rotationOp, OperationConstants::Flags::ROTATE));
     PrivateAccess::call_helpRotate(tree, rotationOp, node6, node4, node2);
 
     // Check Structure
@@ -389,8 +389,8 @@ TEST_CASE("Singh helpRotate Sanity Check") {
     for (int i = 0; i < 6; i++)
       tree.insert(toInsert[i]);
 
-    Node<int>* root = PrivateAccess::get_root(tree);
-    Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
+    Singh::Node<int>* root = PrivateAccess::get_root(tree);
+    Singh::Node<int>*node1, *node2, *node3, *node4, *node5, *node6;
 
     node1 = root->left.load();
     node5 = node1->right.load();
@@ -413,7 +413,7 @@ TEST_CASE("Singh helpRotate Sanity Check") {
     Operation<int>* rotationOp =
         new Operation<int>(std::in_place_type<RotateOp<int>>, node1, node5,
                            node3, false, false, SinghBBST<int>::sentinel);
-    node5->op.store(flag(rotationOp, OperationConstants::Flags::ROTATE));
+    node5->op.store(Singh::flag(rotationOp, OperationConstants::Flags::ROTATE));
     PrivateAccess::call_helpRotate(tree, rotationOp, node1, node5, node3);
 
     // Check Structure
@@ -441,13 +441,13 @@ TEST_CASE("Double rotation test") {
     tree.insert(1);
     tree.insert(3);
     tree.insert(2);
-    Node<int>* root = PrivateAccess::get_root(tree);
+    Singh::Node<int>* root = PrivateAccess::get_root(tree);
     PrivateAccess::call_maintainHelper(tree, root->left.load(), root, true,
                                        false);
 
-    Node<int>* node2 = root->left.load();
-    Node<int>* node1 = node2->left.load();
-    Node<int>* node3 = node2->right.load();
+    Singh::Node<int>* node2 = root->left.load();
+    Singh::Node<int>* node1 = node2->left.load();
+    Singh::Node<int>* node3 = node2->right.load();
     REQUIRE(node1->key == 1);
     REQUIRE(node2->key == 2);
     REQUIRE(node3->key == 3);
@@ -460,13 +460,13 @@ TEST_CASE("Double rotation test") {
     tree.insert(3);
     tree.insert(1);
     tree.insert(2);
-    Node<int>* root = PrivateAccess::get_root(tree);
+    Singh::Node<int>* root = PrivateAccess::get_root(tree);
     PrivateAccess::call_maintainHelper(tree, root->left.load(), root, true,
                                        false);
 
-    Node<int>* node2 = root->left.load();
-    Node<int>* node1 = node2->left.load();
-    Node<int>* node3 = node2->right.load();
+    Singh::Node<int>* node2 = root->left.load();
+    Singh::Node<int>* node1 = node2->left.load();
+    Singh::Node<int>* node3 = node2->right.load();
     REQUIRE(node1->key == 1);
     REQUIRE(node2->key == 2);
     REQUIRE(node3->key == 3);
