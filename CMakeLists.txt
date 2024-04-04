@@ -8,7 +8,7 @@ option(WITH_TSAN "Build tests and benchmarks with ThreadSanitizer" OFF)
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+string(APPEND CMAKE_CXX_FLAGS_RELEASE " -DNDEBUG -O3")
 
 FetchContent_Declare(
         googletest
