@@ -77,7 +77,6 @@ struct SinghBBST {
       }
     }
 
-    std::unreachable();
   }
 
   bool remove(const T& key) {
@@ -137,8 +136,7 @@ struct SinghBBST {
                                       op, OperationConstants::Flags::ROTATE);
           // No need extra checks whether it is decided or not, can only happen once (node never gets set back to NONE)
           node->op.compare_exchange_strong(expected, desired);
-        } else
-          std::unreachable();  // Shouldnt be marked, should be handled already
+        }
 
       } else if (seen_state == RotateOp<T>::GRABBED_FIRST) {
 
@@ -167,8 +165,7 @@ struct SinghBBST {
           child->op.compare_exchange_strong(
               expectedOp,
               desiredOp);  // Success means rotateOp has not progressed beyond GRABBED_FIRST
-        } else
-          std::unreachable();  // Shouldnt be marked, should be handled already
+        }
 
       } else if (seen_state == RotateOp<T>::GRABBED_SECOND) {
         // Create correct node to prepare for insertion and CAS newNode

@@ -8,9 +8,10 @@
 #include "src/NatarajanBST/NatarajanBST.h"
 #include "src/SinghBBST/SinghBBST.h"
 
-constexpr int TOTAL_ELEMS = 2097152;
+constexpr int SETUP_ELEMS = 32768;
+constexpr int TOTAL_ELEMS = 524288;
 constexpr int MIN_THREADS = 2;
-constexpr int MAX_THREADS = 64;
+constexpr int MAX_THREADS = 32;
 
 void createBalancedInsertion(std::vector<int>& container, int start, int end) {
   if (start > end)
@@ -25,19 +26,36 @@ template <typename BST>
 static void BM_READ_INTENSIVE(benchmark::State& state) {
   BST bst;
   std::vector<int> elems;
+  const int tid = state.thread_index();
+  const int CAPACITY_PER_THREAD = TOTAL_ELEMS / state.threads();
 
-  if (state.thread_index() == 0) {
-    createBalancedInsertion(elems, 0, TOTAL_ELEMS / state.threads());
+  if (tid == 0) {
+    createBalancedInsertion(elems, 0, SETUP_ELEMS - 1);
     for (const int elem : elems)
       bst.insert(elem);
   }
 
   for (auto _ : state) {
-    long long sum = 0;
-    for (const int elem : elems) {
-      sum += bst[elem];  // ensure it does not get optimized
+    for (int i = CAPACITY_PER_THREAD * tid, e = CAPACITY_PER_THREAD * (tid + 1);
+         i < e; i++) {
+      benchmark::DoNotOptimize(bst[i]);
     }
-    volatile long long temp = sum;
+  }
+}
+
+static void BM_READ_INTENSIVE_SINGLE_THREADED(benchmark::State& state) {
+  std::set<int> bst;
+  std::vector<int> elems;
+  const int CAPACITY_PER_THREAD = TOTAL_ELEMS;
+
+  createBalancedInsertion(elems, 0, SETUP_ELEMS - 1);
+  for (const int elem : elems)
+    bst.insert(elem);
+
+  for (auto _ : state) {
+    for (int i = 0; i < CAPACITY_PER_THREAD; i++) {
+      benchmark::DoNotOptimize(bst.find(i) != bst.end());
+    }
   }
 }
 
@@ -46,10 +64,11 @@ static void BM_READ_WRITE(benchmark::State& state) {
   BST bst;
   std::vector<int> elems;
   const int CAPACITY_PER_THREAD = TOTAL_ELEMS / state.threads();
+  const int tid = state.thread_index();
 
-  if (state.thread_index() == 0) {
+  if (tid == 0) {
     std::vector<int> initial;
-    createBalancedInsertion(initial, 0, TOTAL_ELEMS - 1);
+    createBalancedInsertion(initial, 0, SETUP_ELEMS - 1);
     for (const int initialElem : initial)
       bst.insert(initialElem);
 
@@ -57,16 +76,35 @@ static void BM_READ_WRITE(benchmark::State& state) {
   }
 
   for (auto _ : state) {
-    long long sum = 0;
     for (const int elem : elems) {
-      const int toBeInserted =
-          TOTAL_ELEMS + CAPACITY_PER_THREAD * state.thread_index() + elem;
+      const int toBeInserted = TOTAL_ELEMS + CAPACITY_PER_THREAD * tid + elem;
       bst.insert(toBeInserted);
-      sum += bst[elem];
-      sum += bst[toBeInserted];
+      benchmark::DoNotOptimize(bst[elem]);
+      benchmark::DoNotOptimize(bst[toBeInserted]);
       bst.remove(toBeInserted);
     }
-    volatile long long temp = sum;
+  }
+}
+
+static void BM_READ_WRITE_SINGLE_THREADED(benchmark::State& state) {
+  std::set<int> bst;
+  std::vector<int> elems;
+  const int CAPACITY_PER_THREAD = TOTAL_ELEMS;
+
+  std::vector<int> initial;
+  createBalancedInsertion(initial, 0, SETUP_ELEMS - 1);
+  for (const int initialElem : initial)
+    bst.insert(initialElem);
+  createBalancedInsertion(elems, 0, CAPACITY_PER_THREAD - 1);
+
+  for (auto _ : state) {
+    for (const int elem : elems) {
+      const int toBeInserted = TOTAL_ELEMS + elem;
+      bst.insert(toBeInserted);
+      benchmark::DoNotOptimize(bst.find(elem) != bst.end());
+      benchmark::DoNotOptimize(bst.find(toBeInserted) != bst.end());
+      bst.erase(toBeInserted);
+    }
   }
 }
 
@@ -75,10 +113,11 @@ static void BM_WRITE_INTENSIVE(benchmark::State& state) {
   BST bst;
   std::vector<int> elems;
   const int CAPACITY_PER_THREAD = TOTAL_ELEMS / state.threads();
+  const int tid = state.thread_index();
 
-  if (state.thread_index() == 0) {
+  if (tid == 0) {
     std::vector<int> initial;
-    createBalancedInsertion(initial, 0, TOTAL_ELEMS - 1);
+    createBalancedInsertion(initial, 0, SETUP_ELEMS - 1);
     for (const int initialElem : initial)
       bst.insert(initialElem);
 
@@ -86,63 +125,65 @@ static void BM_WRITE_INTENSIVE(benchmark::State& state) {
   }
 
   for (auto _ : state) {
-    long long sum = 0;
     for (const int elem : elems) {
-      const int toBeInserted =
-          TOTAL_ELEMS + CAPACITY_PER_THREAD * state.thread_index() + elem;
-      sum += bst.insert(toBeInserted);
-      sum += bst.remove(toBeInserted);
+      const int toBeInserted = TOTAL_ELEMS + CAPACITY_PER_THREAD * tid + elem;
+      bst.insert(toBeInserted);
+      bst.remove(toBeInserted);
     }
-    volatile long long temp = sum;
+  }
+}
+
+static void BM_WRITE_INTENSIVE_SINGLE_THREADED(benchmark::State& state) {
+  std::set<int> bst;
+  std::vector<int> elems;
+  const int CAPACITY_PER_THREAD = TOTAL_ELEMS;
+
+  std::vector<int> initial;
+  createBalancedInsertion(initial, 0, SETUP_ELEMS - 1);
+  for (const int initialElem : initial)
+    bst.insert(initialElem);
+
+  createBalancedInsertion(elems, 0, CAPACITY_PER_THREAD - 1);
+
+  for (auto _ : state) {
+    for (const int elem : elems) {
+      const int toBeInserted = TOTAL_ELEMS + elem;
+      bst.insert(toBeInserted);
+      bst.erase(toBeInserted);
+    }
   }
 }
 
 BENCHMARK(BM_READ_INTENSIVE<NatarajanBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_READ_INTENSIVE<FGLBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_READ_INTENSIVE<CGLBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_READ_INTENSIVE<CGLBBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_READ_INTENSIVE<SinghBBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_INTENSIVE_SINGLE_THREADED);
 
 BENCHMARK(BM_WRITE_INTENSIVE<NatarajanBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_WRITE_INTENSIVE<FGLBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_WRITE_INTENSIVE<CGLBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_WRITE_INTENSIVE<CGLBBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_WRITE_INTENSIVE<SinghBBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_WRITE_INTENSIVE_SINGLE_THREADED);
 
 BENCHMARK(BM_READ_WRITE<NatarajanBST<int>>)
-    ->UseRealTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_WRITE<FGLBST<int>>)
-    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_WRITE<CGLBST<int>>)
-    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_WRITE<CGLBBST<int>>)
-    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_WRITE<SinghBBST<int>>)
-    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<FGLBST<int>>)->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<CGLBST<int>>)->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<CGLBBST<int>>)->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE<SinghBBST<int>>)->ThreadRange(MIN_THREADS, MAX_THREADS);
+BENCHMARK(BM_READ_WRITE_SINGLE_THREADED);
 
 BENCHMARK_MAIN();
