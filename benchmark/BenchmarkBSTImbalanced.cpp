@@ -91,6 +91,7 @@ static void BM_WRITE_INTENSIVE_IMBALANCED(benchmark::State& state) {
 
   for (auto _ : state) {
     long long sum = 0;
+    auto start = std::chrono::high_resolution_clock::now();
     for (const int elem : elems) {
       const int toBeInserted =
           TOTAL_ELEMS + CAPACITY_PER_THREAD * state.thread_index() + elem;
@@ -98,46 +99,26 @@ static void BM_WRITE_INTENSIVE_IMBALANCED(benchmark::State& state) {
       sum += bst.remove(toBeInserted);
     }
     volatile long long temp = sum;
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+    state.SetIterationTime(elapsed.count());
   }
 }
 
-BENCHMARK(BM_READ_INTENSIVE_IMBALANCED<NatarajanBST<int>>)
-//    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_INTENSIVE_IMBALANCED<CGLBST<int>>)
-//    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_INTENSIVE_IMBALANCED<CGLBBST<int>>)
-//    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_INTENSIVE_IMBALANCED<SinghBBST<int>>)
-//    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
 
-BENCHMARK(BM_WRITE_INTENSIVE_IMBALANCED<NatarajanBST<int>>)
-//    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_WRITE_INTENSIVE_IMBALANCED<CGLBST<int>>)
-//    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_WRITE_INTENSIVE_IMBALANCED<CGLBBST<int>>)
-//    ->UseRealTime()
+    ->UseManualTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_WRITE_INTENSIVE_IMBALANCED<SinghBBST<int>>)
-//    ->UseRealTime()
+    ->UseManualTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 
-BENCHMARK(BM_READ_WRITE_IMBALANCED<NatarajanBST<int>>)
-//    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
-BENCHMARK(BM_READ_WRITE_IMBALANCED<CGLBST<int>>)
-//    ->UseRealTime()
-    ->ThreadRange(MIN_THREADS, MAX_THREADS);
+
 BENCHMARK(BM_READ_WRITE_IMBALANCED<CGLBBST<int>>)
-//    ->UseRealTime()
+    ->UseManualTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 BENCHMARK(BM_READ_WRITE_IMBALANCED<SinghBBST<int>>)
-//    ->UseRealTime()
+    ->UseManualTime()
     ->ThreadRange(MIN_THREADS, MAX_THREADS);
 
 BENCHMARK_MAIN();
